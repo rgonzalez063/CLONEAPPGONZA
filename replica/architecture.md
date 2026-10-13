@@ -24,7 +24,7 @@ If the heavy methods (LAD, Theil-Sen on thousands of pairs) are too slow in Node
 
 ## Schema
 
-Tables: 17 (see `replica/schema.sql`). Access rules: row level security on every user-owned table (`user_id = auth.uid()`); derived tables (`method_results`, `matched_pairs`, `time_adjustments`) are written only by server routes that first check the caller owns the session.
+Tables: 14 (see `replica/schema.sql`). Access rules: row level security on every user-owned table (`user_id = auth.uid()`); derived tables (`method_results`, `matched_pairs`, `time_adjustments`) are written only by server routes that first check the caller owns the session.
 
 Design choices:
 - **Derived results are disposable.** `method_results` and `matched_pairs` can always be recomputed from `properties`, `sessions.settings` and `feature_widgets`. Store them so the screen loads fast and the export can show exactly what was on screen.
