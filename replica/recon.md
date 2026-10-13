@@ -68,22 +68,40 @@ F07 Peer comparison:  S09 eyeball -> S21
 ```
 Click count for F01 is not measured. Ask the user to time a real run.
 
-## How the calculations work (from the FAQ; formulas are in the vendor's Method Details PDF, which we do not have)
+## How the calculations work (from the FAQ and the user's exported documents)
 
-- **Included data:** Sold only. Actives, contingent, pending and off-market are dropped. Sales after the effective date are excluded. Up to 5,000 properties per dataset, 3 datasets. Guidance: 50 or more per dataset, ideally 200-500.
-- **Transactional adjustments, in this order, before feature adjustments:** property rights, financing terms, conditions of sale (distressed), seller concessions (deducted from price), market conditions/time.
-- **Time adjustment:** by contract date (or sale date). Tries multiple trend lines per dataset and picks the best fit; polynomial options need 10 data points per inflection point; user may choose a line, "None" or "Type My Own".
-- **Paired sales:** for each property, find others that match on every feature but the one under study; match rules are user-settable. Reports average and median.
-- **Grouped data:** compare groups defined around the dataset median by percent or units; up to 3 analyses per feature; features with yes/no values self-define groups. Average and median.
-- **Regression:** six simple regressions per dataset.
-- **Sensitivity:** try every candidate adjustment, compute adjusted prices, choose the one with the smallest high-low range after trimming the top and bottom 3% (configurable).
-- **Depreciated cost:** cost data (DwellingCost) minus depreciation. Age-life uses lifespan and effective age; or enter depreciation percent. GLA uses dwellings 15% smaller and larger and averages the steps; garage uses 1, 2 and 3 car steps. Settings for % remaining economic life (effective age = lifespan - remaining life x pct) and additional depreciation (e.g. pools).
-- **Error scores:** lower is better; defined in the Method Details PDF.
-- **Modeling:** after you pick an adjustment, adjust every property in every dataset to the subject by that amount, then rerun all methods for unlocked features. Locked (or Done) features are untouched.
-- **Prior choices:** your own average and median from "similar" sessions (same zip, same quality or within one step, last 12 months by default).
-- **Peer results:** per-appraiser median over similar sessions, then median and average across appraisers, shown as purple dots; shown only if 3 or more other appraisers; anonymous; opt-in or out.
-- **Comments:** auto-generated per Done feature from the unconstrained range, editable.
-- **Workfile contents:** Primary Adjustment Summary (PDF+RTF), Adjustment Comments (PDF+RTF), Method Summary, Method Detail, Property Feature Detail, Matched Pairs, Property Information (edits, deletions, source choices), Settings documents, original MLS CSVs, details folder (peer results).
+The user's own exported documents (Method Details, Methods, Settings, Property Info, Condition Details) describe the method math, so the engines can be written from textbook definitions. Do not copy the vendor's wording.
+
+**Data rules.** Sold only. Sales after the effective date are dropped (count shown). Up to 5,000 properties per dataset, 3 datasets. 50 or more per dataset is the minimum advised, 200-500 ideal.
+
+**Transactional adjustments (applied first, in this order).** 1) property rights (leasehold removed, or analyzed by grouped data, paired sales, regression, income approach); 2) financing terms (remove non-cash-equivalent such as seller carryback, or analyze); 3) distressed sales (remove REO and short sales, or analyze); 4) seller concessions (deduct from sale price); 5) market conditions (time).
+
+**Time adjustment.** Contract date (or sale date) to effective date. Try several trend lines per dataset (Polynomial 4/3/2, Linear, Logarithmic) and pick the best fit; each inflection point needs 10 sales (Poly-4 needs 30+). The line is y = a*x + b where x is days from the oldest sale date in the dataset. Also "None" and "Type My Own".
+
+**Methods (each gives a "potential adjustment" per feature):**
+- *Allocation:* price x allocation percent / feature size.
+- *Grouped data:* two groups by feature value; difference in average or median price, divided by the difference in average feature size for sized features. Up to 3 analyses per feature, 2 groups each, groups defined as ranges around the dataset median by percent or units.
+- *Paired sales, true:* every pair of properties that match on all other features (within tolerances) and differ on the studied feature; result is price difference divided by feature difference. Average and median over pairs. Optional outlier removal by 1.5 x IQR.
+- *Paired sales, adjusted:* after Modeling, properties that now match because other features were adjusted for also count as pairs.
+- *Sensitivity:* test every candidate adjustment in steps; adjust every sale to the subject; pick the adjustment with the smallest high-low range of adjusted prices after trimming the top and bottom percent (default 3).
+- *Depreciated cost:* cost to build minus depreciation. Physical depreciation = effective age / lifespan (or entered percent). Sized features use "stepping" (cost at the subject size and at steps above and below), remove kitchen cost so GLA/stories adjustments are not inflated, and average the cost change over size change. Quality and condition adjustments are differences between depreciated costs of adjacent levels (C1 to C6 with plus steps). Optional % remaining economic life and additional depreciation.
+- *Survey (peers):* average or median of other appraisers' adjustments (needs several appraisers).
+- *Simple regression (slope of price on feature is the adjustment):* OLS, Theil-Sen (median of pairwise slopes), Least Absolute Deviation, Least Median of Squares, Robust versions (median in place of mean), Modified Quantile (test percentiles 10 to 90, keep the best r-squared).
+- *Error score:* mean absolute error of predicted vs actual price, per method family; not available for depreciated cost. Standard error of the MAE = MAE / sqrt(n). Lower is better.
+- *Modeling:* adjust all sale prices to the subject using the chosen adjustment, then recompute every unlocked feature. Locked features are excluded.
+
+**Default settings seen in a real session (defaults only, set your own):**
+- Paired-sales tolerances: basement size, finished size, GLA and lot size within 5%; full bath, half bath, garage, carport, stories, half stories, exterior features, style, sewer, views, water, external influence, FEMA SFHA, pool exists, basement exists exact; bedrooms identical or both more than 3; fireplace and basement full baths identical or both more than 0.
+- Cost defaults: basement finished 50%, patio 200 sqft, enclosed patio perimeter 30 ft, pool 450 sqft, parking bay 225 sqft.
+- UAD quality to lifespan (70, 60 or 55 years by tier) and dwelling cost quality (8.0 down to 1.5). UAD condition to effective age: C1 0, C2+ 1, C2 2, C3+ 6, C3 11, C4+ 17, C4 25, C5+ 35, C5 45, C6 55.
+- Similar sessions: quality within 1 half step, same zip, within 12 months.
+
+## Output document formats (from the user's exported sample session)
+
+- **Per-feature Details PDF** (one per Done feature, e.g. GLA, Lot Size, Full Bath, Garage Spaces, Condition): title with the opinion of value ("$25 / SqFt"); a note that methods marked with an asterisk were not given weight; Summary (address, methods utilized, total analyses, effective and analysis dates, datasets analyzed, properties per dataset); the five transactional items with what was done; then one block per method and dataset showing the result (or "No result - zero matched pairs", "not enough properties (minimum 2 per group)", or "excluded by the user as unrealistic"), MAE, standard error of MAE, and method-specific fields (actual and possible matched pairs, group average price/feature/count, trim setting, trendline formula, r-squared, standard deviation); depreciated cost shows each step (size, cost per sqft, kitchen percent, cost without kitchen, physical depreciation as years/lifespan, depreciated cost); then peer results (median, average, anonymous per-appraiser list with N/A) and prior choices.
+- **Comments RTF:** one paragraph per Done feature: "The X adjustment was developed at $N. The results (...) provide an adjustment range from $low to $high. [list of methods that had weight] were the adjustment methods used." Preceded by a sentence on the transactional order. Methods list is generated from the unconstrained results (e.g. "7 different types of simple regression").
+- **Primary Adjustment Summary (RTF, landscape):** title "Sales Comparison Adjustment Support"; summary block (address, effective date, analysis date, datasets analyzed, properties per dataset range); a sentence on the transactional order; a Method Legend table with short codes (TPS.A, TPS.M, APS.A, APS.M, GD.A, GD.M, SENS, COST, OLS, ROLS, TS, LAD, LMS, RLMS, ModQ); then one results matrix per Done feature titled with the chosen value ("Lot Size Methods ($0.50 / SqFt)"). Matrix: columns are method codes; rows are Dataset 1, 2, 3 and a final "No Dataset" row holding the chosen value (under CSTM, the custom/manual slot). Grouped-data cells show two values "analysis 1 | analysis 2". Cells are blank when a method gave no result or was given no weight. A footnote says CSTM represents the Paired Sales method.
+- Observed: possible pairs can be large (20,910 possible, 237 actual in one dataset). A dataset with too few properties yields "no result".
 
 ## Components
 

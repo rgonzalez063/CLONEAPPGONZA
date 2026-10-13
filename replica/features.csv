@@ -28,7 +28,14 @@ Quality plus effective age or depreciation percent,subject,should,yes,no,
 Results screen: widget per feature,results,must,yes,no,core
 Paired sales method with match settings,methods,must,yes,no,
 Grouped data method with group settings (3 analyses),methods,should,yes,no,
-Regression (six variants per dataset),methods,must,yes,no,
+Regression: OLS / Theil-Sen / LAD / LMS / robust / modified quantile,methods,must,yes,no,start with OLS and Theil-Sen
+Allocation method,methods,could,yes,no,
+True vs adjusted paired sales,methods,should,yes,no,adjusted needs modeling
+Paired sales outlier removal (1.5 x IQR),methods,should,yes,no,
+Survey method,methods,skip,yes,no,needs a user network
+Standard error of the MAE,methods,could,yes,no,
+Kitchen cost removal and stepping in depreciated cost,methods,could,yes,no,
+UAD quality and condition conversion tables,subject,should,yes,no,
 Sensitivity method with trim percent,methods,must,yes,no,
 Depreciated cost with settings,methods,could,yes,no,needs cost data
 Error scores and dot sizing,methods,should,yes,no,formula unknown; define own
