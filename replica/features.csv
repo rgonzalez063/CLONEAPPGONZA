@@ -1,20 +1,20 @@
 feature,area,priority,original,clone,notes
 Sign in and account,auth,must,yes,no,
-Entry screen: state / MLS / property type / template / effective date / name,session,must,yes,no,
+Entry screen: state / MLS / property type / template / effective date / name,session,must,yes,partial,HARMLS SFR only; one template
 Save entry choices as defaults,session,could,yes,no,
-Session autosave on every click and reload,session,must,yes,no,
-Session management: load / delete / clone / favorite / search,session,must,yes,no,
+Session autosave on every click and reload,session,must,yes,partial,browser localStorage; Postgres later
+Session management: load / delete / clone / favorite / search,session,must,yes,partial,"list, search, open, delete; no clone or favorite"
 Activity log,session,could,yes,no,
 Templates: create / edit / clone / delete,templates,must,yes,no,
 Create template from current session,templates,should,yes,no,
-Upload MLS CSV into up to 3 named datasets (drag and drop),data,must,yes,no,HARMLS first
-Append more properties to a dataset,data,should,yes,no,
-Remove all properties from a dataset,data,should,yes,no,
-Sold only filter and effective-date cutoff with excluded count,data,must,yes,no,
+Upload MLS CSV into up to 3 named datasets (drag and drop),data,must,yes,partial,generic header aliases; real HARMLS export unverified
+Append more properties to a dataset,data,should,yes,yes,
+Remove all properties from a dataset,data,should,yes,yes,
+Sold only filter and effective-date cutoff with excluded count,data,must,yes,yes,
 Up to 5000 properties per dataset,data,should,yes,no,
 View/modify properties grid (sort search edit delete recover),data,should,yes,no,
 Recalculate after data edits,data,must,yes,no,
-Missing-field upload validation,data,must,yes,no,
+Missing-field upload validation,data,must,yes,yes,lists missing fields
 Per-MLS import field mapping,data,must,yes,no,own export instructions
 Public records source and per-feature source choice,data,skip,yes,no,licensed (DataTree)
 Cost data source,data,skip,yes,no,licensed (DwellingCost)
@@ -22,32 +22,32 @@ Feature overrides (e.g. unknown basement exit -> interior),data,could,yes,no,
 Basement area and bath calculation settings,data,could,yes,no,
 Transactional adjustments in order: rights / financing / distressed / concessions,adjustments,should,yes,no,
 Time adjustment: best-fit trend line by contract date,adjustments,must,yes,no,polynomial limits by data count
-Time adjustment manual choice or "Type My Own",adjustments,should,yes,no,
-Subject property form,subject,must,yes,no,
+"Time adjustment manual choice or ""Type My Own""",adjustments,should,yes,no,
+Subject property form,subject,must,yes,partial,no quality or effective age yet
 Quality plus effective age or depreciation percent,subject,should,yes,no,
-Results screen: widget per feature,results,must,yes,no,core
-Paired sales method with match settings,methods,must,yes,no,
-Grouped data method with group settings (3 analyses),methods,should,yes,no,
-Regression: OLS / Theil-Sen / LAD / LMS / robust / modified quantile,methods,must,yes,no,start with OLS and Theil-Sen
+Results screen: widget per feature,results,must,yes,partial,"4 features, thin slice"
+Paired sales method with match settings,methods,must,yes,partial,"true pairs, fixed tolerances, no settings screen"
+Grouped data method with group settings (3 analyses),methods,should,yes,partial,"automatic groups around the median, no settings"
+Regression: OLS / Theil-Sen / LAD / LMS / robust / modified quantile,methods,must,yes,partial,OLS and Theil-Sen only
 Allocation method,methods,could,yes,no,
-True vs adjusted paired sales,methods,should,yes,no,adjusted needs modeling
-Paired sales outlier removal (1.5 x IQR),methods,should,yes,no,
+True vs adjusted paired sales,methods,should,yes,partial,true only
+Paired sales outlier removal (1.5 x IQR),methods,should,yes,yes,
 Survey method,methods,skip,yes,no,needs a user network
 Standard error of the MAE,methods,could,yes,no,
 Kitchen cost removal and stepping in depreciated cost,methods,could,yes,no,
 UAD quality and condition conversion tables,subject,should,yes,no,
-Sensitivity method with trim percent,methods,must,yes,no,
+Sensitivity method with trim percent,methods,must,yes,partial,fixed 3% trim
 Depreciated cost with settings,methods,could,yes,no,needs cost data
 Error scores and dot sizing,methods,should,yes,no,formula unknown; define own
-Dots color-coded by dataset,results,must,yes,no,
-Exclude icon with hidden-results reasons,results,should,yes,no,
+Dots color-coded by dataset,results,must,yes,yes,plus shapes
+Exclude icon with hidden-results reasons,results,should,yes,partial,reasons in the results table
 Exclude results settings (max percent of value / exclude negatives),results,should,yes,no,
-Constraint slider (grey out) and snip and reset,results,must,yes,no,
-Value slider and number input; Done auto-check,results,must,yes,no,
-Warning when chosen value is in greyed range,results,should,yes,no,
-Modeling (adjust all properties then recalc unlocked features),results,must,yes,no,most powerful feature
-Lock Calculations toggle (auto on when Done),results,must,yes,no,
-Add / remove / reorder features,results,must,yes,no,
+Constraint slider (grey out) and snip and reset,results,must,yes,partial,two range inputs; snip zooms
+Value slider and number input; Done auto-check,results,must,yes,yes,
+Warning when chosen value is in greyed range,results,should,yes,yes,
+Modeling (adjust all properties then recalc unlocked features),results,must,yes,partial,price adjustment and recompute; no adjusted pairs
+Lock Calculations toggle (auto on when Done),results,must,yes,yes,
+Add / remove / reorder features,results,must,yes,partial,add and remove; no reorder
 Compare two features,results,could,yes,no,
 Custom feature from MLS field (numeric / selection / text; AND/OR),results,should,yes,no,
 Save layout to template,results,should,yes,no,
