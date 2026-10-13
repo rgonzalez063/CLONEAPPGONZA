@@ -1,27 +1,59 @@
 feature,area,priority,original,clone,notes
-Sign in,auth,must,yes,no,
-Start session: state / MLS / property type / template / effective date / name,session,must,yes,no,S01
-Reopen an existing session,session,must,yes,no,
-Upload MLS export into up to 3 datasets (drag and drop),data,must,yes,no,start with HARMLS SFR CSV
-Per-dataset summary stats,data,must,yes,no,count / dates / low-avg-high price
-Add more data to a dataset,data,should,yes,no,
-Dataset settings (gear),data,could,yes,no,unknown contents
-Template management for MLS field mapping,data,must,yes,no,needed to parse exports
-Subject property form,subject,must,yes,no,S03
+Sign in and account,auth,must,yes,no,
+Entry screen: state / MLS / property type / template / effective date / name,session,must,yes,no,
+Save entry choices as defaults,session,could,yes,no,
+Session autosave on every click and reload,session,must,yes,no,
+Session management: load / delete / clone / favorite / search,session,must,yes,no,
+Activity log,session,could,yes,no,
+Templates: create / edit / clone / delete,templates,must,yes,no,
+Create template from current session,templates,should,yes,no,
+Upload MLS CSV into up to 3 named datasets (drag and drop),data,must,yes,no,HARMLS first
+Append more properties to a dataset,data,should,yes,no,
+Remove all properties from a dataset,data,should,yes,no,
+Sold only filter and effective-date cutoff with excluded count,data,must,yes,no,
+Up to 5000 properties per dataset,data,should,yes,no,
+View/modify properties grid (sort search edit delete recover),data,should,yes,no,
+Recalculate after data edits,data,must,yes,no,
+Missing-field upload validation,data,must,yes,no,
+Per-MLS import field mapping,data,must,yes,no,own export instructions
+Public records source and per-feature source choice,data,skip,yes,no,licensed (DataTree)
+Cost data source,data,skip,yes,no,licensed (DwellingCost)
+Feature overrides (e.g. unknown basement exit -> interior),data,could,yes,no,
+Basement area and bath calculation settings,data,could,yes,no,
+Transactional adjustments in order: rights / financing / distressed / concessions,adjustments,should,yes,no,
+Time adjustment: best-fit trend line by contract date,adjustments,must,yes,no,polynomial limits by data count
+Time adjustment manual choice or "Type My Own",adjustments,should,yes,no,
+Subject property form,subject,must,yes,no,
 Quality plus effective age or depreciation percent,subject,should,yes,no,
-Quality/lifespan settings table,subject,could,yes,no,
-Per-feature adjustment cards (lot / GLA / full bath / garage / condition ...),adjustments,must,yes,no,S04
-Paired sales method,adjustments,must,yes,no,
-Regression method,adjustments,must,yes,no,
-Sensitivity method,adjustments,should,yes,no,
-Depreciated cost method,adjustments,could,yes,no,needs cost data
-Prior choices overlay,adjustments,should,yes,no,
-Range slider plus value input,adjustments,must,yes,no,
-Lock calculations toggle,adjustments,should,yes,no,
-Model toggle,adjustments,could,yes,no,unclear meaning
-Done checkbox and warning icon per card,adjustments,should,yes,no,
-Drag to reorder cards,adjustments,could,yes,no,
-Export or copy results,export,must,yes,no,screen not yet seen
-Public records data (DataTree),data,skip,yes,no,licensed
-Cost data (DwellingCost),data,skip,yes,no,licensed
-Billing and plans,billing,skip,yes,no,internal tool
+Results screen: widget per feature,results,must,yes,no,core
+Paired sales method with match settings,methods,must,yes,no,
+Grouped data method with group settings (3 analyses),methods,should,yes,no,
+Regression (six variants per dataset),methods,must,yes,no,
+Sensitivity method with trim percent,methods,must,yes,no,
+Depreciated cost with settings,methods,could,yes,no,needs cost data
+Error scores and dot sizing,methods,should,yes,no,formula unknown; define own
+Dots color-coded by dataset,results,must,yes,no,
+Exclude icon with hidden-results reasons,results,should,yes,no,
+Exclude results settings (max percent of value / exclude negatives),results,should,yes,no,
+Constraint slider (grey out) and snip and reset,results,must,yes,no,
+Value slider and number input; Done auto-check,results,must,yes,no,
+Warning when chosen value is in greyed range,results,should,yes,no,
+Modeling (adjust all properties then recalc unlocked features),results,must,yes,no,most powerful feature
+Lock Calculations toggle (auto on when Done),results,must,yes,no,
+Add / remove / reorder features,results,must,yes,no,
+Compare two features,results,could,yes,no,
+Custom feature from MLS field (numeric / selection / text; AND/OR),results,should,yes,no,
+Save layout to template,results,should,yes,no,
+Lot size unit toggle (sqft or acres),results,could,yes,no,
+Prior choices from similar sessions,results,should,yes,no,
+Peer results (anonymous other appraisers),results,skip,yes,no,needs a user network
+Auto-generated comments with per-feature options and Apply to All,export,must,yes,no,
+Custom comment per feature,export,should,yes,no,
+Export: Primary Adjustment PDF and RTF,export,must,yes,no,
+Export: Comments PDF and RTF,export,must,yes,no,
+Export: Method overview PDF,export,should,yes,no,
+Export images (PNG) of the three documents,export,could,yes,no,for ACI users
+Digital workfile folder (all documents plus original CSVs),export,should,yes,no,
+Matched pairs document,export,could,yes,no,large
+Billing and subscription,billing,skip,yes,no,internal tool
+Help center and video library,help,skip,yes,no,
