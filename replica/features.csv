@@ -1,20 +1,27 @@
 feature,area,priority,original,clone,notes
 Sign in,auth,must,yes,no,
-Create analysis from subject property,reports,must,yes,no,
-Import comps (CSV/MLS export),data,must,yes,no,own data source needed
-Comp table with select/deselect,comps,must,yes,no,
-Market definition heat map,market,should,yes,no,needs map library
-Expand to nearby submarkets when few comps,market,could,yes,no,
-Market conditions analysis charts,market,must,yes,no,
-Feature adjustments via multiple methods side by side,adjustments,must,yes,no,start with paired + regression
-GAM modeling,adjustments,could,yes,no,hard
-Peer adjustments,adjustments,could,yes,no,
-Depreciated cost method,adjustments,could,yes,no,
-Sensitivity analysis,adjustments,could,yes,no,
-Non-linear time adjustment from contract dates,adjustments,must,yes,no,follows GSE guidance
-Manual override of any number,adjustments,must,yes,no,
-Site value widgets and charts,site value,could,yes,no,
-Export to PDF,export,must,yes,no,
-Insert into report software (TOTAL/ACI/ClickFORMS),export,skip,yes,no,partner integration
-Condition/quality scores from photos,data,skip,yes,no,licensed (Restb.ai)
-Basic/Pro plans and billing,billing,skip,yes,no,own internal tool
+Start session: state / MLS / property type / template / effective date / name,session,must,yes,no,S01
+Reopen an existing session,session,must,yes,no,
+Upload MLS export into up to 3 datasets (drag and drop),data,must,yes,no,start with HARMLS SFR CSV
+Per-dataset summary stats,data,must,yes,no,count / dates / low-avg-high price
+Add more data to a dataset,data,should,yes,no,
+Dataset settings (gear),data,could,yes,no,unknown contents
+Template management for MLS field mapping,data,must,yes,no,needed to parse exports
+Subject property form,subject,must,yes,no,S03
+Quality plus effective age or depreciation percent,subject,should,yes,no,
+Quality/lifespan settings table,subject,could,yes,no,
+Per-feature adjustment cards (lot / GLA / full bath / garage / condition ...),adjustments,must,yes,no,S04
+Paired sales method,adjustments,must,yes,no,
+Regression method,adjustments,must,yes,no,
+Sensitivity method,adjustments,should,yes,no,
+Depreciated cost method,adjustments,could,yes,no,needs cost data
+Prior choices overlay,adjustments,should,yes,no,
+Range slider plus value input,adjustments,must,yes,no,
+Lock calculations toggle,adjustments,should,yes,no,
+Model toggle,adjustments,could,yes,no,unclear meaning
+Done checkbox and warning icon per card,adjustments,should,yes,no,
+Drag to reorder cards,adjustments,could,yes,no,
+Export or copy results,export,must,yes,no,screen not yet seen
+Public records data (DataTree),data,skip,yes,no,licensed
+Cost data (DwellingCost),data,skip,yes,no,licensed
+Billing and plans,billing,skip,yes,no,internal tool
