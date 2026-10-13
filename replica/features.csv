@@ -1,0 +1,20 @@
+feature,area,priority,original,clone,notes
+Sign in,auth,must,yes,no,
+Create analysis from subject property,reports,must,yes,no,
+Import comps (CSV/MLS export),data,must,yes,no,own data source needed
+Comp table with select/deselect,comps,must,yes,no,
+Market definition heat map,market,should,yes,no,needs map library
+Expand to nearby submarkets when few comps,market,could,yes,no,
+Market conditions analysis charts,market,must,yes,no,
+Feature adjustments via multiple methods side by side,adjustments,must,yes,no,start with paired + regression
+GAM modeling,adjustments,could,yes,no,hard
+Peer adjustments,adjustments,could,yes,no,
+Depreciated cost method,adjustments,could,yes,no,
+Sensitivity analysis,adjustments,could,yes,no,
+Non-linear time adjustment from contract dates,adjustments,must,yes,no,follows GSE guidance
+Manual override of any number,adjustments,must,yes,no,
+Site value widgets and charts,site value,could,yes,no,
+Export to PDF,export,must,yes,no,
+Insert into report software (TOTAL/ACI/ClickFORMS),export,skip,yes,no,partner integration
+Condition/quality scores from photos,data,skip,yes,no,licensed (Restb.ai)
+Basic/Pro plans and billing,billing,skip,yes,no,own internal tool
