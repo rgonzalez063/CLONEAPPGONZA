@@ -138,6 +138,24 @@ Selecting a feature adds a widget. Plain features adjust a number or yes/no valu
 
 The matched-pair rules in Synapse's settings listed about 25 features (basement, baths, bedrooms, carport, exterior features, fireplace, garage, GLA, lot, style, sewer, stories, views, water, external influence, FEMA flood, pool, half stories). Each added feature also becomes a "must match" feature for paired sales of the others, which is why adding data columns raises the number of pairs.
 
+### How the group sub-menus behave (from the user's screenshots)
+
+Hovering a ">" item opens a second list built from the loaded data: one row per distinct value found, each with its property count, then a final row "Compare <group>". Examples from the sample session:
+
+| group | options shown (property counts in the sample) |
+| --- | --- |
+| Common Areas | Greenhouse (7), None (198), Spa/Hot Tub (7), Tennis (1) |
+| Cooling | Central (184), None (6), Window Unit (22) |
+| Energy Efficient | None (186), Windows (20) |
+| Exterior Features | None (200), Outdoor Kitchen (1), Storage (4), Tennis (1) |
+| Fencing | Backyard Fenced (53), Fenced Condo (1), Fully Fenced (24), None (126), Partially Fenced (2) |
+
+Rules this implies for the clone:
+- The option list is computed from the data, not fixed. Values come from splitting the MLS text field on commas, and a property can have several (counts can add up to more than the number of properties).
+- Every group has a "None" option, meaning the field was empty for that property.
+- Picking one option analyzes "has this option" against "does not" (a yes/no feature). "Compare <group>" lets the appraiser choose two options and analyze one against the other.
+- The count next to each option shows whether there is enough data to calculate anything (an option with 1 property cannot give a result).
+
 ## Components
 
 | component | variants | states | used on |
