@@ -1,4 +1,5 @@
 'use client'
+import { diffEvents, type ActivityEvent, type LoggedEvent } from './activity'
 import type { StoredProperty } from './importer'
 import type { Dataset, Session, SessionSummary, Template, TemplateFeature, TemplateSettings, WidgetState } from './types'
 
@@ -77,6 +78,42 @@ export async function createSession(input: Pick<Session, 'name' | 'state' | 'mls
 export async function deleteSession(id: string): Promise<void> {
   await api(`/api/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' })
   snapshots.delete(id)
+  queued.delete(id)
+}
+export async function cloneSession(id: string): Promise<{ id: string; name: string }> {
+  await flushNow(id)
+  return (await api<{ session: { id: string; name: string } }>(`/api/sessions/${encodeURIComponent(id)}/clone`, { method: 'POST' })).session
+}
+export const setFavorite = (id: string, favorite: boolean) => api(`/api/sessions/${encodeURIComponent(id)}`, { method: 'PATCH', body: { favorite } })
+
+// ------------------------------------------------------------------ activity log
+const queued = new Map<string, ActivityEvent[]>() // events waiting to be sent, kept if a send fails
+const EVENT_BATCH = 200
+
+async function sendEvents(id: string) {
+  const list = queued.get(id)
+  while (list && list.length) {
+    const batch = list.slice(0, EVENT_BATCH)
+    await api(`/api/sessions/${encodeURIComponent(id)}/events`, { method: 'POST', body: { events: batch } })
+    list.splice(0, batch.length)
+  }
+}
+/** Record something that is not a change to the saved session (an export, a template saved). Never blocks the caller on failure. */
+export function logEvent(id: string, type: string, detail: Record<string, unknown> = {}): Promise<void> {
+  const list = queued.get(id) ?? []
+  list.push({ type, detail, at: new Date().toISOString() })
+  queued.set(id, list)
+  return sendEvents(id).catch(() => { /* stays queued; sent with the next save */ })
+}
+export async function listEvents(id: string): Promise<LoggedEvent[]> {
+  await sendEvents(id).catch(() => {})
+  return (await api<{ events: LoggedEvent[] }>(`/api/sessions/${encodeURIComponent(id)}/events`)).events
+}
+/** Save any waiting change right now. */
+async function flushNow(id: string) {
+  const job = pending.get(id)
+  if (job) { job.timer && clearTimeout(job.timer); await saveSession(job.latest) }
+  await chain
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
@@ -121,6 +158,9 @@ async function flush(id: string, latest: Session) {
   }
   if (Object.keys(patch).length) await api(`/api/sessions/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch })
   snapshots.set(id, { session: latest, props: nextProps })
+  const events = diffEvents(was, latest, base.props).map((e) => ({ ...e, at: new Date().toISOString() }))
+  if (events.length) { queued.set(id, [...(queued.get(id) ?? []), ...events]) }
+  await sendEvents(id).catch(() => { /* a failed log send never fails the save */ })
 }
 
 async function runFlush(id: string, latest: Session) {

@@ -65,3 +65,11 @@ export const templateInput = z.object({
 })
 
 export const credentials = z.object({ email: z.string().trim().max(200).email(), password: z.string().min(1).max(200) })
+
+export const eventsInput = z.object({
+  events: z.array(z.object({
+    type: z.string().regex(/^[a-z_]{1,24}(\.[a-z_]{1,32})?$/),
+    detail: z.record(z.string().max(40), z.unknown()).refine((d) => JSON.stringify(d).length <= 2000, 'Detail is too long.'),
+    at: z.string().datetime().optional(),
+  })).min(1).max(200),
+}).strict()

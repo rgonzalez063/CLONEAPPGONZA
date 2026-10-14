@@ -7,6 +7,8 @@ import {
 } from '@/lib/documents'
 import { resolveFeature } from '@/lib/features'
 import { download, toPdf, toRtf } from '@/lib/render'
+import { eventDetail, eventTitle } from '@/lib/activity'
+import { listEvents, logEvent } from '@/lib/store'
 import { Button, Modal } from './ui'
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'session'
@@ -71,6 +73,7 @@ export function ExportModal({ input, transactional, onClose }: { input: ReportIn
       if (sel.summary) await one(`${base}-adjustments`, buildSummary(input), true)
       if (sel.comments) await one(`${base}-comments`, buildComments(input, transactional))
       if (sel.overview) await one(`${base}-methods`, buildMethodOverview(input))
+      void logEvent(input.session.id, 'export.documents', { documents: [sel.summary && 'adjustment summary', sel.comments && 'comments', sel.overview && 'method overview'].filter(Boolean).join(', ') + ` (${format.toUpperCase()})` })
     } catch (e) { setError(e instanceof Error ? e.message : 'The export failed.') } finally { setBusy(false) }
   }
   async function workfile() {
@@ -87,9 +90,17 @@ export function ExportModal({ input, transactional, onClose }: { input: ReportIn
       await add('Adjustment-Method-Overview', buildMethodOverview(input))
       await add('Settings', buildSettings(input))
       await add('Property-Information', buildPropertyInfo(input))
+      try {
+        const events = (await listEvents(input.session.id)).slice().reverse()
+        await add('Activity-Log', [
+          { kind: 'title', text: 'Activity log' }, { kind: 'p', text: `${input.session.subject?.address ?? input.session.name}. Every change made in this session, oldest first.` },
+          { kind: 'table', head: ['Time', 'Event', 'Details'], rows: events.map((e) => [new Date(e.ts).toLocaleString('en-US'), eventTitle(e.type), eventDetail(e.type, e.detail)]) },
+        ], true)
+      } catch { /* the workfile is still useful without it */ }
       for (const k of Object.keys(input.widgets)) if (input.widgets[k].chosen !== null && resolveFeature(k)) await add(`Details/${slug(resolveFeature(k)!.label)}`, buildFeatureDetails(input, k))
       files['Data/properties-used.csv'] = strToU8(propertiesCsv(input))
       download(`${base}-workfile.zip`, zipSync(files), 'application/zip')
+      void logEvent(input.session.id, 'export.workfile', {})
     } catch (e) { setError(e instanceof Error ? e.message : 'The workfile could not be built.') } finally { setBusy(false) }
   }
 

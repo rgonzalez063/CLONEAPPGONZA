@@ -11,7 +11,7 @@ import { defaultCommentOptions } from '@/lib/comments'
 import { computeFeature, defaultWidget, prepareDatasets, subjectValues } from '@/lib/analysis'
 import { defaultTransactional, type TransactionalSettings } from '@/lib/transactional'
 import { FEATURE_ORDER, PLAIN_MENU, FEATURES, compareKey, groupKey, groupMenu, resolveFeature } from '@/lib/features'
-import { listTemplates, saveSession, type Session, type Subject, type Template, type WidgetState } from '@/lib/store'
+import { listTemplates, logEvent, saveSession, type Session, type Subject, type Template, type WidgetState } from '@/lib/store'
 import { SaveTemplateModal } from '@/components/SaveTemplateModal'
 import { useSession } from '@/lib/useSession'
 
@@ -167,6 +167,7 @@ export default function ResultsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link className="rounded-md border border-border-input px-3 py-2 text-sm" href={`/session/${session.id}/datasets`}>Datasets</Link>
+          <Link className="rounded-md border border-border-input px-3 py-2 text-sm" href={`/session/${session.id}/activity`}>Activity log</Link>
           <Button variant="secondary" onClick={() => setAsking(true)}>Edit subject</Button>
           <Button variant="secondary" onClick={() => setAdding(true)}>Add feature</Button>
           <Button variant="secondary" onClick={() => setPanel('paired')}>Paired sales settings</Button>
@@ -198,7 +199,7 @@ export default function ResultsPage() {
         const transactional = session.commentTransactional ?? true
         if (panel === 'template') {
           return <SaveTemplateModal session={session} current={sourceTemplate} onClose={() => setPanel(null)}
-            onSaved={(t, replaced) => { setPanel(null); setSourceTemplate(t); setTemplateNote(replaced ? `Updated the template "${t.name}".` : `Saved the template "${t.name}".`) }} />
+            onSaved={(t, replaced) => { void logEvent(session.id, replaced ? 'template.updated' : 'template.saved', { name: t.name }); setPanel(null); setSourceTemplate(t); setTemplateNote(replaced ? `Updated the template "${t.name}".` : `Saved the template "${t.name}".`) }} />
         }
         if (panel === 'paired') {
           return <PairedSettingsModal value={session.pairedSettings} prepared={prepared} featureKeys={keys}

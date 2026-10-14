@@ -51,3 +51,7 @@ A template keeps: transactional settings, paired sales rules, comment options, t
 - [ ] **dependencies:** `npm audit --omit=dev` shows 2 findings, both from Next.js's bundled PostCSS (build-time, needs a hostile source map in CSS the app does not process). The fix is Next 16, a breaking upgrade; plan it separately. jsPDF was upgraded to 4.2.1 to clear its critical advisory.
 - [ ] privacy policy: not needed for a private single-user tool; if others use it, list your hosting and database providers.
 - [ ] HTTPS: the cookie is `secure` in production, so deploy behind HTTPS.
+
+## Activity log
+- `session_events` (migration 002): one row per event, owned by the session and the user, deleted with either. Read and written only through routes that check the session belongs to the signed-in user (`GET/POST /api/sessions/:id/events`, `POST /api/sessions/:id/clone`).
+- Events hold plain values only (names, MLS numbers, amounts); never file contents. Capped at 20,000 per session and 200 per request.

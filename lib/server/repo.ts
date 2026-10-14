@@ -82,7 +82,27 @@ export async function createSession(q: Queryable, userId: string, input: NewSess
   for (let slot = 1; slot <= 3; slot++) {
     await q.query('insert into datasets (session_id, slot, name) values ($1, $2, $3)', [id, slot, tpl?.datasetNames[slot - 1] || `Dataset ${slot}`])
   }
+  await addEvents(q, userId, id, [{ type: 'session.created', detail: { name, template: tpl?.name ?? input.template } }])
   return (await getSession(q, userId, id))!
+}
+
+/** An exact copy of a session: settings, subject, features and their order, results state, and every sale with its edits and removals. */
+export async function cloneSession(q: Queryable, userId: string, id: string): Promise<Session | null> {
+  const src = await q.query<{ name: string }>('select name from sessions where id = $1 and user_id = $2', [id, userId])
+  if (!src.rows[0]) return null
+  const copy = await q.query<{ id: string }>(
+    `insert into sessions (user_id, template_id, name, state, mls, property_type, effective_date, settings, subject, widgets, widget_order, data_version)
+     select user_id, template_id, left(name, 100) || ' (clone)', state, mls, property_type, effective_date, settings, subject, widgets, widget_order, data_version
+     from sessions where id = $1 and user_id = $2 returning id`, [id, userId])
+  const newId = copy.rows[0].id
+  await q.query('insert into datasets (session_id, slot, name, excluded_after_effective) select $2, slot, name, excluded_after_effective from datasets where session_id = $1', [id, newId])
+  await q.query(
+    `insert into properties (dataset_id, mls_number, sale_price, sale_date, contract_date, status, vals, meta, src_text, deleted, edits)
+     select nd.id, p.mls_number, p.sale_price, p.sale_date, p.contract_date, p.status, p.vals, p.meta, p.src_text, p.deleted, p.edits
+     from properties p join datasets od on od.id = p.dataset_id join datasets nd on nd.session_id = $2 and nd.slot = od.slot
+     where od.session_id = $1`, [id, newId])
+  await addEvents(q, userId, newId, [{ type: 'session.cloned', detail: { from: src.rows[0].name } }])
+  return getSession(q, userId, newId)
 }
 
 export interface SessionPatch {
@@ -103,10 +123,12 @@ export async function patchSession(q: Queryable, userId: string, id: string, p: 
        name = coalesce($3, name), effective_date = coalesce($4::date, effective_date),
        subject = case when $5::boolean then $6::jsonb else subject end,
        widgets = coalesce($7::jsonb, widgets), widget_order = coalesce($11::jsonb, widget_order), settings = $8::jsonb,
-       data_version = coalesce($9, data_version), favorite = coalesce($10, favorite), updated_at = now()
+       data_version = coalesce($9, data_version), favorite = coalesce($10, favorite),
+       updated_at = case when $12::boolean then now() else updated_at end
      where id = $1 and user_id = $2`,
     [id, userId, p.name ?? null, p.effectiveDate ?? null, 'subject' in p, 'subject' in p ? JSON.stringify(p.subject ?? null) : null,
-     p.widgets ? JSON.stringify(p.widgets) : null, JSON.stringify(settings), p.dataVersion ?? null, p.favorite ?? null, p.widgets ? JSON.stringify(Object.keys(p.widgets)) : null])
+     p.widgets ? JSON.stringify(p.widgets) : null, JSON.stringify(settings), p.dataVersion ?? null, p.favorite ?? null, p.widgets ? JSON.stringify(Object.keys(p.widgets)) : null,
+     Object.keys(p).some((k) => k !== 'favorite')]) // starring a session does not count as working on it
   return true
 }
 
@@ -193,4 +215,34 @@ export async function deleteTemplate(q: Queryable, userId: string, id: string): 
 // ------------------------------------------------------------------ users
 export async function deleteUser(q: Queryable, userId: string): Promise<void> {
   await q.query('delete from users where id = $1', [userId])
+}
+
+// ------------------------------------------------------------------ activity log
+export interface EventInput { type: string; detail: Record<string, unknown>; at?: string }
+export interface EventRow { id: number; ts: string; type: string; detail: Record<string, unknown> }
+const MAX_EVENTS_PER_SESSION = 20000
+
+/** Appends events to a session the user owns. The event time is the browser's, if it is within a day of now; otherwise the server's. */
+export async function addEvents(q: Queryable, userId: string, sessionId: string, events: EventInput[]): Promise<boolean> {
+  const own = await q.query('select 1 from sessions where id = $1 and user_id = $2', [sessionId, userId])
+  if (!own.rows.length) return false
+  if (events.length) {
+    await q.query(
+      `insert into session_events (session_id, user_id, ts, event_type, detail)
+       select $1, $2, case when r.at is not null and abs(extract(epoch from (r.at::timestamptz - now()))) < 86400 then r.at::timestamptz else now() end, r.type, r.detail
+       from jsonb_to_recordset($3::jsonb) as r(type text, detail jsonb, at text)`,
+      [sessionId, userId, JSON.stringify(events.map((e) => ({ type: e.type, detail: e.detail ?? {}, at: e.at ?? null })))])
+    await q.query(
+      `delete from session_events where session_id = $1 and id in (select id from session_events where session_id = $1 order by ts desc, id desc offset $2)`,
+      [sessionId, MAX_EVENTS_PER_SESSION])
+  }
+  return true
+}
+
+export async function listEvents(q: Queryable, userId: string, sessionId: string, limit = 2000): Promise<EventRow[] | null> {
+  const own = await q.query('select 1 from sessions where id = $1 and user_id = $2', [sessionId, userId])
+  if (!own.rows.length) return null
+  const r = await q.query<{ id: string; ts: unknown; event_type: string; detail: Record<string, unknown> }>(
+    'select id, ts, event_type, detail from session_events where session_id = $1 and user_id = $2 order by ts desc, id desc limit $3', [sessionId, userId, Math.min(limit, 5000)])
+  return r.rows.map((e) => ({ id: Number(e.id), ts: iso(e.ts), type: e.event_type, detail: e.detail }))
 }

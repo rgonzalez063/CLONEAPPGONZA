@@ -188,3 +188,84 @@ describe('templates', () => {
     expect((await db.query('select 1 from properties p join datasets d on d.id = p.dataset_id where d.session_id = $1', [s.id])).rows).toHaveLength(0)
   })
 })
+
+describe('clone, favorites and the activity log', () => {
+  const eventInput = (n: number) => Array.from({ length: n }, (_, i) => ({ type: 'test.event', detail: { i } }))
+  it('clones everything, and the copy is independent of the original', async () => {
+    const s = await repo.createSession(db, alice, { ...input, name: 'Original' })
+    await repo.patchSession(db, alice, s.id, {
+      subject: { address: '9 Elm', zip: '77033', gla: 1400, lot_size: 6000, baths_full: 2, baths_half: 0, stories: 1, garage: 1 }, dataVersion: 5,
+      widgets: { lot_size: { chosen: 0.5, done: true, locked: true, model: false, low: null, high: null }, gla: { chosen: 25, done: true, locked: true, model: true, low: 1, high: 90, comment: { range: false, methods: true, extra: 'x' } } },
+      transactional: { removeLeasehold: true, removeNonCash: true, removeREO: false, removeShortSale: true, deductConcessions: true, timeBasis: 'sale', timeModel: 'linear' },
+    })
+    await repo.patchDataset(db, alice, s.id, 2, { name: 'Neighborhood', upsert: [prop(1), prop(2, { deleted: true, edits: { gla: { from: 1, to: 2 } } }), prop(3)], excludedAfterEffective: 7 })
+    const c = (await repo.cloneSession(db, alice, s.id))!
+    expect(c.id).not.toBe(s.id)
+    expect(c.name).toBe('Original (clone)')
+    expect(c.subject?.address).toBe('9 Elm')
+    expect(c.dataVersion).toBe(5)
+    expect(Object.keys(c.widgets)).toEqual(['lot_size', 'gla'])
+    expect(c.widgets.gla).toMatchObject({ chosen: 25, model: true, low: 1, high: 90, comment: { extra: 'x' } })
+    expect(c.transactional?.timeBasis).toBe('sale')
+    const d2 = c.datasets.find((d) => d.slot === 2)!
+    expect(d2.name).toBe('Neighborhood')
+    expect(d2.excludedAfterEffective).toBe(7)
+    expect(d2.properties.map((p) => p.id)).toEqual(['M1', 'M2', 'M3'])
+    expect(d2.properties[1]).toMatchObject({ deleted: true, edits: { gla: { from: 1, to: 2 } } })
+    // changing the copy leaves the original alone, and the other way round
+    await repo.patchDataset(db, alice, c.id, 2, { clear: true })
+    await repo.patchSession(db, alice, c.id, { name: 'Changed copy' })
+    const orig = (await repo.getSession(db, alice, s.id))!
+    expect(orig.name).toBe('Original')
+    expect(orig.datasets.find((d) => d.slot === 2)!.properties).toHaveLength(3)
+    expect((await repo.getSession(db, alice, c.id))!.datasets.find((d) => d.slot === 2)!.properties).toHaveLength(0)
+  })
+  it('another user cannot clone a session', async () => {
+    const s = await repo.createSession(db, alice, { ...input, name: 'Private' })
+    expect(await repo.cloneSession(db, bob, s.id)).toBeNull()
+    expect((await repo.listSessions(db, bob)).some((x) => x.name.startsWith('Private'))).toBe(false)
+  })
+  it('starring a session does not move it in the list or change its edit time', async () => {
+    const a = await repo.createSession(db, alice, { ...input, name: 'Star A' })
+    await repo.createSession(db, alice, { ...input, name: 'Star B (newer)' })
+    const before = (await repo.listSessions(db, alice)).find((x) => x.id === a.id)!
+    await repo.patchSession(db, alice, a.id, { favorite: true })
+    const after = (await repo.listSessions(db, alice)).find((x) => x.id === a.id)!
+    expect(after.favorite).toBe(true)
+    expect(after.updatedAt).toBe(before.updatedAt)
+    await repo.patchSession(db, alice, a.id, { favorite: false, name: 'Star A renamed' })
+    const moved = (await repo.listSessions(db, alice))[0]
+    expect(moved.name).toBe('Star A renamed') // a real edit does move it to the top
+  })
+  it('records events in order, newest first, with the browser time when it is close to now', async () => {
+    const s = await repo.createSession(db, alice, input)
+    const earlier = new Date(Date.now() - 3600_000).toISOString()
+    expect(await repo.addEvents(db, alice, s.id, [{ type: 'a.first', detail: { n: 1 }, at: earlier }, { type: 'b.second', detail: { n: 2 } }])).toBe(true)
+    const list = (await repo.listEvents(db, alice, s.id))!
+    // sorted by event time: the hour-old browser time puts a.first before session.created
+    expect(list.map((e) => e.type)).toEqual(['b.second', 'session.created', 'a.first'])
+    expect(list.find((e) => e.type === 'a.first')!.ts).toBe(earlier)
+    // a time far from now is not trusted
+    await repo.addEvents(db, alice, s.id, [{ type: 'c.old', detail: {}, at: '2001-01-01T00:00:00.000Z' }])
+    const c = (await repo.listEvents(db, alice, s.id))!.find((e) => e.type === 'c.old')!
+    expect(Math.abs(Date.parse(c.ts) - Date.now())).toBeLessThan(60000)
+  })
+  it('the log is private, and is removed with the session', async () => {
+    const s = await repo.createSession(db, alice, input)
+    await repo.addEvents(db, alice, s.id, eventInput(3))
+    expect(await repo.listEvents(db, bob, s.id)).toBeNull()
+    expect(await repo.addEvents(db, bob, s.id, eventInput(1))).toBe(false)
+    expect((await db.query('select 1 from session_events where session_id = $1 and user_id = $2', [s.id, bob])).rows).toHaveLength(0)
+    await repo.deleteSession(db, alice, s.id)
+    expect((await db.query('select 1 from session_events where session_id = $1', [s.id])).rows).toHaveLength(0)
+  })
+  it('keeps only the newest 20,000 events per session', async () => {
+    const s = await repo.createSession(db, alice, input)
+    for (let i = 0; i < 4; i++) await repo.addEvents(db, alice, s.id, eventInput(5000))
+    const n = Number((await db.query<{ n: string }>('select count(*) as n from session_events where session_id = $1', [s.id])).rows[0].n)
+    expect(n).toBe(20000)
+    await repo.addEvents(db, alice, s.id, [{ type: 'last.one', detail: {} }])
+    expect((await repo.listEvents(db, alice, s.id, 1))![0].type).toBe('last.one')
+    expect(Number((await db.query<{ n: string }>('select count(*) as n from session_events where session_id = $1', [s.id])).rows[0].n)).toBe(20000)
+  }, 60000)
+})
