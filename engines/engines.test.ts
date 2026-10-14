@@ -71,6 +71,19 @@ describe('synthetic market with a known $50/sqft GLA effect', () => {
   })
 })
 
+describe('match rules', () => {
+  const g = (rule: FeatureDef['rule']): FeatureDef => ({ ...gla, rule })
+  const pairsFor = (rule: FeatureDef['rule']) =>
+    findPairs([prop('a', 100, { gla: 1500 }), prop('b', 110, { gla: 1590 })], g({ type: 'exact' }), [g(rule)]).length
+  it('abs: sizes within a number of units count as the same, so they do not pair on that feature', () => {
+    // studied feature uses exact here; the rule under test is applied to the studied feature only through its own def
+    const same = (rule: FeatureDef['rule']) => findPairs([prop('a', 100, { gla: 1500, x: 1 }), prop('b', 110, { gla: 1590, x: 1 })], g(rule), [g(rule)]).length
+    expect(same({ type: 'abs', tol: 100 })).toBe(0) // 90 sqft apart is "the same" within 100
+    expect(same({ type: 'abs', tol: 50 })).toBe(1) // 90 sqft apart differs when the tolerance is 50
+    expect(pairsFor({ type: 'exact' })).toBe(1)
+  })
+})
+
 describe('modeling', () => {
   it('moves prices to the subject by the decided rate', () => {
     const props = [prop('a', 200000, { gla: 1900 })]

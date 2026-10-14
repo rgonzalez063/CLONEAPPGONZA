@@ -1,6 +1,7 @@
 'use client'
 import type { StoredProperty } from './importer'
 import type { TransactionalSettings } from './transactional'
+import type { PairedSettings } from './pairedSettings'
 
 /**
  * Fake data layer: localStorage, with the function signatures the real (Postgres) layer will keep.
@@ -20,6 +21,7 @@ export interface Session {
   subject: Subject | null
   widgets: Record<string, WidgetState>
   transactional?: TransactionalSettings
+  pairedSettings?: PairedSettings
   commentTransactional?: boolean
   dataVersion?: number // bumped whenever properties are edited, deleted or recovered, so results recompute
 }

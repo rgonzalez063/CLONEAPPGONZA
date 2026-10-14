@@ -1,4 +1,5 @@
-import { ALL_FEATURES, resolveFeature } from './features'
+import { resolveFeature } from './features'
+import { describeRule, matchFeatures } from './pairedSettings'
 import { featureComment, relevantResults, METHOD_NAMES, TRANSACTIONAL_SENTENCE, defaultCommentOptions, type CommentOptions } from './comments'
 import { money, perUnit } from './format'
 import type { DatasetResults, PreparedDataset } from './analysis'
@@ -139,7 +140,6 @@ export function buildFeatureDetails(i: ReportInput, key: string): Block[] {
 // ------------------------------------------------------------------ settings and property information
 export function buildSettings(i: ReportInput): Block[] {
   const t = i.session.transactional
-  const tol = (r: (typeof ALL_FEATURES)[number]['rule']) => (r.type === 'exact' ? 'exact match' : r.type === 'pct' ? `within ${r.pct}%` : `identical, or both above ${r.n}`)
   return [
     { kind: 'title', text: 'Settings used' },
     { kind: 'h', text: 'Transactional adjustments' },
@@ -153,7 +153,8 @@ export function buildSettings(i: ReportInput): Block[] {
       d.name, d.report.timeModel, d.report.trend?.coefficients.map((c) => c.toFixed(4)).join(', ') ?? '', d.report.trend ? d.report.trend.r2.toFixed(3) : '', d.report.oldestDate ?? '',
     ]) },
     { kind: 'h', text: 'Paired sales: properties must match on' },
-    { kind: 'table', head: ['Feature', 'Tolerance'], rows: ALL_FEATURES.map((f) => [f.label, tol(f.rule)]) },
+    { kind: 'table', head: ['Feature', 'Tolerance'], rows: matchFeatures(i.session.pairedSettings).map((f) => [f.label, describeRule(f.rule)]) },
+    { kind: 'p', text: `Pair rates beyond 1.5 times the interquartile range are ${(i.session.pairedSettings?.removeOutliers ?? true) ? 'set aside' : 'kept'}.` },
   ]
 }
 

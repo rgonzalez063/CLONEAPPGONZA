@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { FeatureWidget } from '@/components/FeatureWidget'
 import { Button, Modal, TextInput } from '@/components/ui'
 import { CommentsModal, ExportModal } from '@/components/ReportModals'
+import { PairedSettingsModal } from '@/components/PairedSettingsModal'
 import type { ReportInput } from '@/lib/documents'
 import { defaultCommentOptions } from '@/lib/comments'
 import { computeFeature, defaultWidget, prepareDatasets, subjectValues } from '@/lib/analysis'
@@ -117,7 +118,7 @@ export default function ResultsPage() {
   const [s, setS] = useState<Session | null | undefined>(undefined)
   const [asking, setAsking] = useState(false)
   const [adding, setAdding] = useState(false)
-  const [panel, setPanel] = useState<'comments' | 'export' | null>(null)
+  const [panel, setPanel] = useState<'comments' | 'export' | 'paired' | null>(null)
   useEffect(() => { void getSession(id).then((x) => { setS(x); if (x && !x.subject) setAsking(true) }) }, [id])
 
   // Recompute only when data, subject, or modeled/chosen values change (not on slider constraint moves).
@@ -125,7 +126,7 @@ export default function ResultsPage() {
   const prepared = useMemo(() => (s ? prepareDatasets(s) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [prepKey])
-  const calcKey = s ? JSON.stringify([prepKey, s.subject, Object.entries(s.widgets).map(([k, w]) => [k, w.model ? w.chosen : null, w.subject])]) : ''
+  const calcKey = s ? JSON.stringify([prepKey, s.pairedSettings, s.subject, Object.entries(s.widgets).map(([k, w]) => [k, w.model ? w.chosen : null, w.subject])]) : ''
   const computed = useMemo(() => {
     if (!s?.subject) return {}
     return Object.fromEntries(Object.keys(s.widgets).map((k) => [k, computeFeature(s, k, prepared)]))
@@ -152,6 +153,7 @@ export default function ResultsPage() {
           <Link className="rounded-md border border-border-input px-3 py-2 text-sm" href={`/session/${session.id}/datasets`}>Datasets</Link>
           <Button variant="secondary" onClick={() => setAsking(true)}>Edit subject</Button>
           <Button variant="secondary" onClick={() => setAdding(true)}>Add feature</Button>
+          <Button variant="secondary" onClick={() => setPanel('paired')}>Paired sales settings</Button>
           <Button variant="secondary" onClick={() => setPanel('comments')}>View comments</Button>
           <Button onClick={() => setPanel('export')}>Export</Button>
         </div>
@@ -176,6 +178,11 @@ export default function ResultsPage() {
           analysisDate: new Date().toISOString().slice(0, 10),
         }
         const transactional = session.commentTransactional ?? true
+        if (panel === 'paired') {
+          return <PairedSettingsModal value={session.pairedSettings} prepared={prepared} featureKeys={keys}
+            featureLabels={Object.fromEntries(keys.map((k) => [k, resolveFeature(k)?.label ?? k]))}
+            onClose={() => setPanel(null)} onSave={(p) => { setPanel(null); void save({ ...session, pairedSettings: p }) }} />
+        }
         return panel === 'comments'
           ? <CommentsModal input={input} transactional={transactional} onClose={() => setPanel(null)}
               onTransactional={(v) => void save({ ...session, commentTransactional: v })}

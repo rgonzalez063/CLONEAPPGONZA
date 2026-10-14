@@ -8,6 +8,7 @@
 | S02 | Sessions list | 2026-10-13 | partial | clone, favorite | |
 | S04 | Datasets | 2026-10-13 | partial | property grid (S06), data source settings, dataset settings | generic CSV header aliases; needs a real HARMLS export to confirm. "Load sample" is synthetic |
 | S05 | Subject modal | 2026-10-13 | partial | quality, effective age or depreciation percent, basement, half-story fields | |
+| S12 | Paired sales settings | 2026-10-14 | done | saving to templates (no templates yet) | |
 | S06 | View/modify properties | 2026-10-14 | partial | per-column data source switch, public records mismatch marker | see below |
 | S09 | Results (Lot Size, GLA, Full Bath, Garage) | 2026-10-13 | partial | comments, export, prior choices, reorder, transactional settings, time adjustment, depreciated cost | the dot widget, constraint, snip, value input, Done, Lock, Model all work |
 | design | `/design` primitives page | 2026-10-13 | done | | |
@@ -47,6 +48,14 @@ Acceptance test: `lib/real-sample.test.ts` (skipped when the private exports in 
 - **Workfile:** the Property Information document now lists every sale removed by hand and every value edited, with the original and current value.
 - **Verified in the browser with the real dataset 2:** sorted, searched, removed the two highest sales, edited a GLA to 9,999 with the keyboard, tried invalid input; GLA OLS for dataset 2 moved from $153 to $63 and returned to exactly $153 (error 44,890) after recovering and undoing. No console errors. 35 unit tests pass.
 - Bug found and fixed while testing: typing into a cell appended to the old value instead of replacing it; the editor now selects the text on open.
+
+## Paired sales settings (2026-10-14)
+- **Screen:** Results page, "Paired sales settings". Every feature paired sales can match on has a switch and a rule: exactly the same, within a percentage, within a number of units (for example 100 sqft), or the same / both more than a number (bedrooms, fireplaces). Sixteen features: GLA, lot size, baths, half baths, bedrooms, stories, garage, pool, style, carport, fireplaces, age, rooms, HOA, public sewer, public water. Nine are on by default. There is also a switch for setting aside pair rates beyond 1.5 times the interquartile range.
+- The studied feature keeps its own rule for what counts as "differs", so GLA at 5% means two homes within 5% of each other are not a pair on GLA.
+- **Live pair counts** per dataset for every feature on the Results page, updated as you change a rule. Invalid values (a percentage over 100, a negative amount) show a message and disable Save. Reset to defaults restores the verified set.
+- Saved with the session; results recompute on save; the workfile Settings document lists the rules actually used.
+- **Verified with the real dataset 2 in the browser:** default 231 pairs for GLA; lot size 10% gives 308; bedrooms off gives 672; GLA tolerance of 100 sqft gives 291; the paired-sales result moved from $108/$120 to $96/$105 with the looser lot rule and returned exactly after Reset; the value survived a reload. Dataset 1 correctly shows 0 pairs, as Synapse did. Unit and real-sample tests cover the rules (40 tests).
+- Not done: saving these settings into a template (templates are not built yet).
 
 ## Harder than expected / gaps
 - **Not reproduced:** least median of squares, robust LMS and modified quantile (Synapse's definitions are not clear from the text; my readings gave different numbers), dataset 2 sensitivity ($134 vs 140 to 166 depending on trend and trim), and paired-sales pair counts (Synapse found 237 pairs, my six-feature rule found 85; Synapse matches on about 25 features).

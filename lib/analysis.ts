@@ -1,4 +1,5 @@
-import { ALL_FEATURES, resolveFeature } from './features'
+import { resolveFeature } from './features'
+import { matchFeatures, studiedWithRule } from './pairedSettings'
 import {
   groupedData, modelPrices, pairedSales, regression, sensitivity, median,
   type FeatureDef, type MethodResult, type Property,
@@ -52,8 +53,10 @@ export function subjectValues(session: Session): Record<string, number | null> {
 
 /** Run every method for one feature on every dataset that has data. */
 export function computeFeature(session: Session, key: string, prepared: PreparedDataset[]): DatasetResults[] {
-  const feature = resolveFeature(key)
-  if (!feature) return []
+  const base = resolveFeature(key)
+  if (!base) return []
+  const feature = studiedWithRule(base, session.pairedSettings)
+  const mustMatch = matchFeatures(session.pairedSettings)
   const subj = subjectValues(session)
   const sv = subj[key]
   const decided = modeled(session, key)
@@ -73,7 +76,7 @@ export function computeFeature(session: Session, key: string, prepared: Prepared
         results.push(
           groupedData(props, feature, g1, g2, 'avg'),
           groupedData(props, feature, g1, g2, 'median'),
-          ...pairedSales(props, feature, ALL_FEATURES, { removeOutliers: true }),
+          ...pairedSales(props, feature, mustMatch, { removeOutliers: session.pairedSettings?.removeOutliers ?? true }),
           ...regression(props, feature),
         )
         if (sv !== null && sv !== undefined) {

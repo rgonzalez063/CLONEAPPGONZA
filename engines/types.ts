@@ -3,6 +3,7 @@
 export type MatchRule =
   | { type: 'exact' }
   | { type: 'pct'; pct: number } // within pct percent of each other
+  | { type: 'abs'; tol: number } // within tol units of each other (e.g. 100 sqft)
   | { type: 'identicalOrBothGreater'; n: number } // equal, or both strictly greater than n
 
 export interface FeatureDef {

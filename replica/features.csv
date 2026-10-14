@@ -26,7 +26,7 @@ Time adjustment: best-fit trend line by contract date,adjustments,must,yes,parti
 Subject property form,subject,must,yes,partial,no quality or effective age yet
 Quality plus effective age or depreciation percent,subject,should,yes,no,
 Results screen: widget per feature,results,must,yes,partial,"4 features, thin slice"
-Paired sales method with match settings,methods,must,yes,partial,true pairs; default must-match set finds 231 pairs for GLA (Synapse 237); error 74/72 vs 73/72; no settings screen yet
+Paired sales method with match settings,methods,must,yes,yes,"settings screen: 16 features on or off, rule per feature (exact, within %, within units, same or both more than N), outlier trim, live pair counts; default set finds 231 pairs for GLA on the real dataset 2 (Synapse 237), error 74/72 vs 73/72"
 Grouped data method with group settings (3 analyses),methods,should,yes,partial,"automatic groups around the median, no settings"
 Regression: OLS / Theil-Sen / LAD / LMS / robust / modified quantile,methods,must,yes,partial,"OLS, Theil-Sen, robust OLS, LAD match Synapse on the real sample. LMS, robust LMS, modified quantile not reproduced (formula unclear)"
 Allocation method,methods,could,yes,no,

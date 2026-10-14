@@ -11,6 +11,8 @@ function same(a: number, b: number, rule: MatchRule): boolean {
       const base = Math.max(Math.abs(a), Math.abs(b))
       return base === 0 ? true : Math.abs(a - b) / base <= rule.pct / 100
     }
+    case 'abs':
+      return Math.abs(a - b) <= rule.tol
     case 'identicalOrBothGreater':
       return a === b || (a > rule.n && b > rule.n)
   }

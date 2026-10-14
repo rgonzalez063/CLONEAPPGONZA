@@ -5,6 +5,7 @@ import { findPairs, lad, ols, pairedSales, regression, robustOls, sensitivity, t
 import { ALL_FEATURES, FEATURES, resolveFeature } from './features'
 import { importCsv } from './importer'
 import { applyTransactional, defaultTransactional } from './transactional'
+import { defaultPairedSettings, matchFeatures, studiedWithRule, type PairedSettings } from './pairedSettings'
 
 // Acceptance test against the user's real HARMLS exports and the numbers Synapse produced for them.
 // The exports are private and gitignored (.sample/). The test is skipped when they are absent.
@@ -99,5 +100,30 @@ describe.skipIf(!have)('real HARMLS sample session (subject effective 2026-10-09
     console.log('DS2 GLA', JSON.stringify(regression(p2, FEATURES.gla).map((r) => [r.method, Math.round(r.value ?? NaN)])))
     const lot1 = regression(toProps(t1!), FEATURES.lot_size).map((r) => [r.method, r.value && +r.value.toFixed(2)])
     console.log('DS1 LOT', JSON.stringify(lot1))
+  })
+})
+
+describe.skipIf(!have)('paired sales settings on the real dataset 2', () => {
+  const d2 = have ? importCsv(fs.readFileSync(path.join(dir, 'NEIGH.csv'), 'utf8'), EFFECTIVE) : null
+  const props = have ? applyTransactional(d2!.properties, { ...defaultTransactional, timeModel: 'none' }, EFFECTIVE).properties.map((p) => ({ id: p.id, price: p.adjPrice, values: p.values })) : []
+  const count = (s: PairedSettings) => findPairs(props, studiedWithRule(FEATURES.gla, s), matchFeatures(s)).length
+  it('default settings find about as many pairs as Synapse (237)', () => {
+    expect(Math.abs(count(defaultPairedSettings()) - 237)).toBeLessThan(10)
+  })
+  it('a looser lot size rule finds more pairs, a stricter one fewer', () => {
+    const at = (pct: number) => { const s = defaultPairedSettings(); s.features.lot_size.rule = { type: 'pct', pct }; return count(s) }
+    expect(at(10)).toBeGreaterThan(at(5))
+    expect(at(1)).toBeLessThan(at(5))
+  })
+  it('switching a feature off finds more pairs; switching carport on finds fewer', () => {
+    const base = count(defaultPairedSettings())
+    const off = defaultPairedSettings(); off.features.beds.enabled = false
+    const on = defaultPairedSettings(); on.features.carport.enabled = true
+    expect(count(off)).toBeGreaterThan(base)
+    expect(count(on)).toBeLessThanOrEqual(base)
+  })
+  it('a size tolerance in square feet works for the studied feature too', () => {
+    const s = defaultPairedSettings(); s.features.gla.rule = { type: 'abs', tol: 100 }
+    expect(count(s)).toBeLessThan(count(defaultPairedSettings()) + 1)
   })
 })
