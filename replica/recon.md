@@ -149,10 +149,13 @@ Hovering a ">" item opens a second list built from the loaded data: one row per 
 | Energy Efficient | None (186), Windows (20) |
 | Exterior Features | None (200), Outdoor Kitchen (1), Storage (4), Tennis (1) |
 | Fencing | Backyard Fenced (53), Fenced Condo (1), Fully Fenced (24), None (126), Partially Fenced (2) |
+| Heating | Central Air (187), None (7), Window Unit (4) |
+| Patios | Balcony/Terrace (4), Covered Patio/Deck (18), None (174), Patio/Deck (24), Porch (11), Rooftop Deck (1) |
 
 Rules this implies for the clone:
 - The option list is computed from the data, not fixed. Values come from splitting the MLS text field on commas, and a property can have several (counts can add up to more than the number of properties).
 - Every group has a "None" option, meaning the field was empty for that property.
+- Two groups show the same option names under different headings (Heating lists "Central Air" and "Window Unit", like Cooling), so group labels come from the MLS field, not the option text.
 - Picking one option analyzes "has this option" against "does not" (a yes/no feature). "Compare <group>" lets the appraiser choose two options and analyze one against the other.
 - The count next to each option shows whether there is enough data to calculate anything (an option with 1 property cannot give a result).
 
