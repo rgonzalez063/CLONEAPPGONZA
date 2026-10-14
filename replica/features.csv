@@ -64,3 +64,5 @@ Digital workfile folder (all documents plus original CSVs),export,should,yes,no,
 Matched pairs document,export,could,yes,no,large
 Billing and subscription,billing,skip,yes,no,internal tool
 Help center and video library,help,skip,yes,no,
+"Built-in feature catalog: age, bedrooms, half baths, carport, fireplaces, pool, stories, rooms, HOA, style, quality, heating, cooling, exterior, fencing, patios, spa, flood area",results,should,yes,no,menu captured; importer needs more columns; groups use selection options
+Feature groups with options and Compare (two options in one group),results,could,yes,no,"Cooling, Heating, Exterior Features, Fencing, Patios, Pool Type, Energy Efficient, Common Areas"

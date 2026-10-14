@@ -103,6 +103,41 @@ The user's own exported documents (Method Details, Methods, Settings, Property I
 - **Primary Adjustment Summary (RTF, landscape):** title "Sales Comparison Adjustment Support"; summary block (address, effective date, analysis date, datasets analyzed, properties per dataset range); a sentence on the transactional order; a Method Legend table with short codes (TPS.A, TPS.M, APS.A, APS.M, GD.A, GD.M, SENS, COST, OLS, ROLS, TS, LAD, LMS, RLMS, ModQ); then one results matrix per Done feature titled with the chosen value ("Lot Size Methods ($0.50 / SqFt)"). Matrix: columns are method codes; rows are Dataset 1, 2, 3 and a final "No Dataset" row holding the chosen value (under CSTM, the custom/manual slot). Grouped-data cells show two values "analysis 1 | analysis 2". Cells are blank when a method gave no result or was given no weight. A footnote says CSTM represents the Paired Sales method.
 - Observed: possible pairs can be large (20,910 possible, 237 actual in one dataset). A dataset with too few properties yields "no result".
 
+## Built-in feature catalog (Add Feature menu, from the user's screenshots)
+
+Selecting a feature adds a widget. Plain features adjust a number or yes/no value. Items marked ">" open a sub-list of options, and the appraiser can also pick "Compare" to compare two options inside one group.
+
+| menu item | kind | likely HARMLS export column (for our importer) |
+| --- | --- | --- |
+| Age | number | Year Built (age = effective year minus year built) |
+| Basement: Other Rooms, Rec Rooms, Bedrooms, Finished Area, Full Baths, Half Baths, Total Area | number | none in the sample export (basement is not exported) |
+| Baths: Half | number | Baths Half |
+| Bedrooms | number | Bedrooms |
+| Common Areas > | group | Common Walls YN |
+| Cooling > | group | Cool System |
+| Energy Efficient > | group | Energy |
+| Exterior Features > | group | Exterior |
+| Fencing > | group | Lot Description (text search) |
+| Fireplace Count | number | Fireplaces Number |
+| Flood Hazard Area | yes/no | not in the sample export |
+| HOA Exists | yes/no | Maintenance Fee Yes No, HOA Mandatory |
+| Half Stories | number | not in the sample export |
+| Heating > | group | Heat System |
+| Parking: Carport Spaces | number | Carport Spaces Count |
+| Parking: Garage Attached, Built-In, Detached | yes/no | Garage Desc (text) |
+| Patios > | group | not in the sample export |
+| Pool | yes/no | Pool Private |
+| Pool Type > | group | Pool Private Desc |
+| Property Design | choice | Style |
+| Quality | choice | entered by the appraiser (UAD quality) |
+| Spa | yes/no | not in the sample export |
+| Stories | number | Stories |
+| Total Rooms | number | Room Count |
+| (already analyzed) Lot Size, GLA, Full Bath, Garage Spaces, Condition | number | Lot Size, Building SqFt, Baths Full, No Of Garage Cap, entered |
+| Custom feature | any MLS field | wizard: pick a field, type numeric / selection / text, optional AND/OR of fields |
+
+The matched-pair rules in Synapse's settings listed about 25 features (basement, baths, bedrooms, carport, exterior features, fireplace, garage, GLA, lot, style, sewer, stories, views, water, external influence, FEMA flood, pool, half stories). Each added feature also becomes a "must match" feature for paired sales of the others, which is why adding data columns raises the number of pairs.
+
 ## Components
 
 | component | variants | states | used on |
