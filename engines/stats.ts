@@ -58,3 +58,50 @@ export function theilSen(x: number[], y: number[]) {
   const intercept = median(y.map((yi, i) => yi - slope * x[i]))
   return { slope, intercept, pairs: slopes.length }
 }
+
+/**
+ * Robust OLS: the same algebraic slope as OLS but centered on medians instead of means.
+ * slope = sum((x - med(x)) * (y - med(y))) / sum((x - med(x))^2)
+ */
+export function robustOls(x: number[], y: number[]) {
+  const mx = median(x)
+  const my = median(y)
+  let sxx = 0
+  let sxy = 0
+  for (let i = 0; i < x.length; i++) {
+    sxx += (x[i] - mx) ** 2
+    sxy += (x[i] - mx) * (y[i] - my)
+  }
+  if (sxx === 0) return null
+  const slope = sxy / sxx
+  return { slope, intercept: my - slope * mx }
+}
+
+/**
+ * Least absolute deviation: among all lines through two data points, the one with the smallest
+ * sum of absolute residuals. Above maxCandidates points, candidate lines come from a deterministic
+ * subsample (every k-th point) while residuals are still summed over all points.
+ */
+export function lad(x: number[], y: number[], maxCandidates = 400) {
+  const n = x.length
+  const step = Math.max(1, Math.ceil(n / maxCandidates))
+  const idx: number[] = []
+  for (let i = 0; i < n; i += step) idx.push(i)
+  let best: { slope: number; intercept: number; sum: number } | null = null
+  for (let a = 0; a < idx.length; a++) {
+    for (let b = a + 1; b < idx.length; b++) {
+      const i = idx[a]
+      const j = idx[b]
+      if (x[i] === x[j]) continue
+      const slope = (y[j] - y[i]) / (x[j] - x[i])
+      const intercept = y[i] - slope * x[i]
+      let sum = 0
+      for (let k = 0; k < n; k++) {
+        sum += Math.abs(y[k] - (slope * x[k] + intercept))
+        if (best && sum >= best.sum) break
+      }
+      if (!best || sum < best.sum) best = { slope, intercept, sum }
+    }
+  }
+  return best
+}

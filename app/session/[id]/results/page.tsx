@@ -4,7 +4,8 @@ import { useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { FeatureWidget } from '@/components/FeatureWidget'
 import { Button, Modal, TextInput } from '@/components/ui'
-import { computeFeature, defaultWidget, subjectValues } from '@/lib/analysis'
+import { computeFeature, defaultWidget, prepareDatasets, subjectValues } from '@/lib/analysis'
+import { defaultTransactional, type TransactionalSettings } from '@/lib/transactional'
 import { FEATURES, FEATURE_ORDER } from '@/lib/features'
 import { getSession, saveSession, type Session, type Subject, type WidgetState } from '@/lib/store'
 
@@ -32,6 +33,42 @@ function SubjectModal({ initial, onDone, onCancel }: { initial: Subject; onDone:
   )
 }
 
+function TransactionalPanel({ settings, prepared, onChange }: { settings: TransactionalSettings; prepared: ReturnType<typeof prepareDatasets>; onChange: (t: TransactionalSettings) => void }) {
+  const box = (k: 'removeLeasehold' | 'removeNonCash' | 'removeREO' | 'removeShortSale' | 'deductConcessions', label: string) => (
+    <label className="flex items-center gap-2"><input type="checkbox" checked={settings[k]} onChange={(e) => onChange({ ...settings, [k]: e.target.checked })} /> {label}</label>
+  )
+  return (
+    <details className="mb-3 rounded-md border border-border p-3">
+      <summary className="cursor-pointer font-semibold">Transactional adjustments (done before any feature adjustment)</summary>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {box('removeLeasehold', '1. Remove leasehold sales')}
+        {box('removeNonCash', '2. Remove owner or seller financed sales')}
+        {box('removeREO', '3. Remove REO sales')}
+        {box('removeShortSale', '3. Remove short sales')}
+        {box('deductConcessions', '4. Deduct seller concessions from the price')}
+        <label className="flex items-center gap-2">5. Market conditions by
+          <select aria-label="Time basis" className="rounded-sm border border-border-input px-1" value={settings.timeBasis} onChange={(e) => onChange({ ...settings, timeBasis: e.target.value as 'contract' | 'sale' })}>
+            <option value="contract">contract date</option><option value="sale">sale date</option>
+          </select>
+          <select aria-label="Time trend" className="rounded-sm border border-border-input px-1" value={settings.timeModel} onChange={(e) => onChange({ ...settings, timeModel: e.target.value as TransactionalSettings['timeModel'] })}>
+            <option value="best">best fit</option><option value="linear">linear</option><option value="poly2">polynomial 2</option>
+            <option value="poly3">polynomial 3</option><option value="poly4">polynomial 4</option><option value="none">none</option>
+          </select>
+        </label>
+      </div>
+      <ul className="mt-3 text-xs text-text-muted" aria-label="What was applied">
+        {prepared.map((d) => {
+          const r = d.report.removed
+          const removed = [r.leasehold && `${r.leasehold} leasehold`, r.nonCash && `${r.nonCash} seller financed`, r.reo && `${r.reo} REO`, r.shortSale && `${r.shortSale} short sale`].filter(Boolean).join(', ')
+          const t = d.report.trend
+          const trend = t && t.model === 'linear' ? `linear trend, ${t.coefficients[0] >= 0 ? '+' : '-'}$${Math.abs(t.coefficients[0]).toFixed(2)} per day (r² ${t.r2.toFixed(2)})` : t ? `${t.model} trend (r² ${t.r2.toFixed(2)})` : 'no time adjustment'
+          return <li key={d.slot}>{d.name}: {d.props.length} sales{removed ? `, removed ${removed}` : ''}; {trend}{d.report.oldestDate ? `, oldest ${d.report.oldestDate}` : ''}</li>
+        })}
+      </ul>
+    </details>
+  )
+}
+
 export default function ResultsPage() {
   const { id } = useParams<{ id: string }>()
   const [s, setS] = useState<Session | null | undefined>(undefined)
@@ -39,12 +76,16 @@ export default function ResultsPage() {
   useEffect(() => { void getSession(id).then((x) => { setS(x); if (x && !x.subject) setAsking(true) }) }, [id])
 
   // Recompute only when data, subject, or modeled/chosen values change (not on slider constraint moves).
-  const calcKey = s ? JSON.stringify([s.datasets.map((d) => d.properties.length), s.subject, Object.entries(s.widgets).map(([k, w]) => [k, w.model ? w.chosen : null])]) : ''
+  const prepKey = s ? JSON.stringify([s.datasets.map((d) => d.properties.length), s.transactional, s.effectiveDate]) : ''
+  const prepared = useMemo(() => (s ? prepareDatasets(s) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [prepKey])
+  const calcKey = s ? JSON.stringify([prepKey, s.subject, Object.entries(s.widgets).map(([k, w]) => [k, w.model ? w.chosen : null])]) : ''
   const computed = useMemo(() => {
     if (!s?.subject) return {}
-    return Object.fromEntries(Object.keys(s.widgets).map((k) => [k, computeFeature(s, k)]))
+    return Object.fromEntries(Object.keys(s.widgets).map((k) => [k, computeFeature(s, k, prepared)]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calcKey])
+  }, [calcKey, prepared])
 
   if (s === undefined) return <p className="p-8 text-text-muted">Loading…</p>
   if (s === null) return <p className="p-8">Session not found. <Link className="text-accent" href="/sessions">Back to sessions</Link></p>
@@ -75,6 +116,11 @@ export default function ResultsPage() {
           )}
         </div>
       </div>
+      <TransactionalPanel
+        settings={session.transactional ?? defaultTransactional}
+        prepared={prepared}
+        onChange={(t) => void save({ ...session, transactional: t })}
+      />
       <div className="grid gap-3 rounded-md bg-workspace p-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(400px, 100%), 1fr))' }}>
         {keys.map((k) => (
           <FeatureWidget key={k} feature={FEATURES[k]} data={computed[k] ?? []} state={widgets[k]} subjectValue={sv[k] ?? null}

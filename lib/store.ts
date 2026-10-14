@@ -1,5 +1,6 @@
 'use client'
 import type { StoredProperty } from './importer'
+import type { TransactionalSettings } from './transactional'
 
 /**
  * Fake data layer: localStorage, with the function signatures the real (Postgres) layer will keep.
@@ -18,6 +19,7 @@ export interface Session {
   datasets: Dataset[]
   subject: Subject | null
   widgets: Record<string, WidgetState>
+  transactional?: TransactionalSettings
 }
 export interface Dataset { slot: number; name: string; properties: StoredProperty[]; excludedAfterEffective: number }
 export interface Subject {

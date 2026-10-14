@@ -7,25 +7,33 @@ export interface StoredProperty {
   contractDate: string | null
   status: string
   values: Record<string, number | null>
+  meta?: { concessions: number; financing: string; special: string; ownership: string }
   deleted?: boolean
 }
 
 /**
- * Column aliases (lower-case, punctuation removed). These are generic guesses.
- * The per-MLS template and mapping screen replaces this once a real export is available.
+ * Column aliases, normalized (lower-case, letters and digits only), in priority order.
+ * Verified against a real HARMLS custom export. Other MLS systems get their own template later.
  */
 const ALIASES: Record<string, string[]> = {
-  id: ['mls', 'mlsnumber', 'mlsnum', 'listingid', 'id'],
+  id: ['mlsnumber', 'mlsnum', 'listingid', 'id'],
   salePrice: ['closeprice', 'soldprice', 'saleprice', 'sellingprice'],
   saleDate: ['closedate', 'solddate', 'saledate', 'closingdate'],
   contractDate: ['contractdate', 'pendingdate', 'purchasecontractdate'],
   status: ['status', 'liststatus'],
-  gla: ['gla', 'sqft', 'livingarea', 'buildingsqft', 'squarefeet'],
-  lot_size: ['lotsize', 'lotsqft', 'lotsizesqft', 'lotsizeacres'],
+  gla: ['buildingsqft', 'gla', 'livingarea', 'squarefeet', 'sqft'],
+  lot_size: ['lotsize', 'lotsqft', 'lotsizesqft'],
   baths_full: ['bathsfull', 'fullbaths', 'fullbath'],
-  garage: ['garagespaces', 'garage', 'garagecapacity'],
-  stories: ['stories', 'numberofstories'],
-  beds: ['beds', 'bedrooms', 'bedroomstotal'],
+  baths_half: ['bathshalf', 'halfbaths', 'halfbath'],
+  garage: ['noofgaragecap', 'garagespaces', 'garagecapacity', 'garage'],
+  carport: ['carportspacescount', 'carportspaces'],
+  stories: ['stories', 'numberofunitstories', 'buildingstories'],
+  beds: ['bedrooms', 'beds', 'bedroomstotal'],
+  pool: ['poolprivate'],
+  concessions: ['sellertobuyerclosingcosts', 'sellerconcessions', 'closingcosts'],
+  financing: ['soldterms'],
+  special: ['specialconditions'],
+  ownership: ['ownership', 'propertyrights'],
 }
 const REQUIRED = ['id', 'salePrice', 'saleDate', 'gla']
 
@@ -33,8 +41,9 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 
 function toNumber(s: string | undefined): number | null {
   if (s === undefined) return null
-  const n = Number(s.replace(/[$,\s]/g, ''))
-  return s.trim() === '' || !Number.isFinite(n) ? null : n
+  const t = s.replace(/[$,\s]/g, '')
+  const n = Number(t)
+  return t === '' || !Number.isFinite(n) ? null : n
 }
 
 function toIso(s: string | undefined): string | null {
@@ -54,14 +63,16 @@ export interface ImportResult {
 }
 
 export function importCsv(text: string, effectiveDate: string): ImportResult {
-  const rows = parseCsv(text)
+  const rows = parseCsv(text.replace(/^﻿/, ''))
   const empty: ImportResult = { properties: [], missingFields: [], excludedAfterEffective: 0, excludedNotSold: 0, skippedRows: 0 }
   if (rows.length < 2) return { ...empty, missingFields: REQUIRED }
   const header = rows[0].map(norm)
   const col: Record<string, number> = {}
   for (const [field, names] of Object.entries(ALIASES)) {
-    const i = header.findIndex((h) => names.includes(h))
-    if (i >= 0) col[field] = i
+    for (const n of names) {
+      const i = header.indexOf(n)
+      if (i >= 0) { col[field] = i; break }
+    }
   }
   const missing = REQUIRED.filter((f) => col[f] === undefined)
   if (missing.length) return { ...empty, missingFields: missing }
@@ -79,8 +90,16 @@ export function importCsv(text: string, effectiveDate: string): ImportResult {
     if (saleDate > effectiveDate) { out.excludedAfterEffective++; continue }
     seen.add(id)
     const values: Record<string, number | null> = {}
-    for (const k of ['gla', 'lot_size', 'baths_full', 'garage', 'stories', 'beds']) values[k] = toNumber(get(k))
-    out.properties.push({ id, salePrice: price, saleDate, contractDate: toIso(get('contractDate')), status, values })
+    for (const k of ['gla', 'lot_size', 'baths_full', 'baths_half', 'garage', 'carport', 'stories', 'beds']) values[k] = toNumber(get(k))
+    const pool = (get('pool') ?? '').trim().toLowerCase()
+    values.pool = pool === 'true' ? 1 : pool === 'false' ? 0 : null
+    out.properties.push({
+      id, salePrice: price, saleDate, contractDate: toIso(get('contractDate')), status, values,
+      meta: {
+        concessions: toNumber(get('concessions')) ?? 0, financing: (get('financing') ?? '').trim(),
+        special: (get('special') ?? '').trim(), ownership: (get('ownership') ?? '').trim(),
+      },
+    })
   }
   return out
 }

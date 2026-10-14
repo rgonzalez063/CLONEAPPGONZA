@@ -7,7 +7,7 @@ Session management: load / delete / clone / favorite / search,session,must,yes,p
 Activity log,session,could,yes,no,
 Templates: create / edit / clone / delete,templates,must,yes,no,
 Create template from current session,templates,should,yes,no,
-Upload MLS CSV into up to 3 named datasets (drag and drop),data,must,yes,partial,generic header aliases; real HARMLS export unverified
+Upload MLS CSV into up to 3 named datasets (drag and drop),data,must,yes,yes,"verified with the real HARMLS export (419 columns, 210 rows)"
 Append more properties to a dataset,data,should,yes,yes,
 Remove all properties from a dataset,data,should,yes,yes,
 Sold only filter and effective-date cutoff with excluded count,data,must,yes,yes,
@@ -15,20 +15,20 @@ Up to 5000 properties per dataset,data,should,yes,no,
 View/modify properties grid (sort search edit delete recover),data,should,yes,no,
 Recalculate after data edits,data,must,yes,no,
 Missing-field upload validation,data,must,yes,yes,lists missing fields
-Per-MLS import field mapping,data,must,yes,no,own export instructions
+Per-MLS import field mapping,data,must,yes,partial,HARMLS column names built in; no mapping screen
 Public records source and per-feature source choice,data,skip,yes,no,licensed (DataTree)
 Cost data source,data,skip,yes,no,licensed (DwellingCost)
 Feature overrides (e.g. unknown basement exit -> interior),data,could,yes,no,
 Basement area and bath calculation settings,data,could,yes,no,
-Transactional adjustments in order: rights / financing / distressed / concessions,adjustments,should,yes,no,
-Time adjustment: best-fit trend line by contract date,adjustments,must,yes,no,polynomial limits by data count
-"Time adjustment manual choice or ""Type My Own""",adjustments,should,yes,no,
+Transactional adjustments in order: rights / financing / distressed / concessions,adjustments,should,yes,yes,"settings panel on the results page; leasehold, seller financed, REO, short sale, concessions"
+Time adjustment: best-fit trend line by contract date,adjustments,must,yes,partial,"linear, polynomial 2-4 (10 sales per inflection point); log needs a positive x offset so it is off. Dataset 1 reproduces Synapse exactly"
+"Time adjustment manual choice or ""Type My Own""",adjustments,should,yes,partial,"choice of linear, poly 2-4, none; no type-your-own"
 Subject property form,subject,must,yes,partial,no quality or effective age yet
 Quality plus effective age or depreciation percent,subject,should,yes,no,
 Results screen: widget per feature,results,must,yes,partial,"4 features, thin slice"
-Paired sales method with match settings,methods,must,yes,partial,"true pairs, fixed tolerances, no settings screen"
+Paired sales method with match settings,methods,must,yes,partial,"true pairs; match rules use 6 features, Synapse uses about 25; dataset 2 median $98 matches, pair counts differ"
 Grouped data method with group settings (3 analyses),methods,should,yes,partial,"automatic groups around the median, no settings"
-Regression: OLS / Theil-Sen / LAD / LMS / robust / modified quantile,methods,must,yes,partial,OLS and Theil-Sen only
+Regression: OLS / Theil-Sen / LAD / LMS / robust / modified quantile,methods,must,yes,partial,"OLS, Theil-Sen, robust OLS, LAD match Synapse on the real sample. LMS, robust LMS, modified quantile not reproduced (formula unclear)"
 Allocation method,methods,could,yes,no,
 True vs adjusted paired sales,methods,should,yes,partial,true only
 Paired sales outlier removal (1.5 x IQR),methods,should,yes,yes,

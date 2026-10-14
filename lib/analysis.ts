@@ -4,12 +4,25 @@ import {
   groupedData, modelPrices, pairedSales, regression, sensitivity, median,
   type MethodResult, type Property,
 } from '@/engines'
-import type { Dataset, Session, WidgetState } from './store'
+import type { Session, WidgetState } from './store'
+import { applyTransactional, defaultTransactional, type TransactionalReport } from './transactional'
 
 export interface DatasetResults { slot: number; name: string; count: number; results: MethodResult[] }
+export interface PreparedDataset { slot: number; name: string; props: Property[]; report: TransactionalReport; excludedAfterEffective: number }
 
-const toProps = (d: Dataset): Property[] =>
-  d.properties.filter((p) => !p.deleted).map((p) => ({ id: p.id, price: p.salePrice, values: p.values }))
+/** Apply the transactional adjustments (filters, concessions, time trend) once per dataset. */
+export function prepareDatasets(session: Session): PreparedDataset[] {
+  const settings = session.transactional ?? defaultTransactional
+  return session.datasets
+    .filter((d) => d.properties.length > 0)
+    .map((d) => {
+      const t = applyTransactional(d.properties, settings, session.effectiveDate)
+      return {
+        slot: d.slot, name: d.name, report: t.report, excludedAfterEffective: d.excludedAfterEffective,
+        props: t.properties.map((p) => ({ id: p.id, price: p.adjPrice, values: p.values })),
+      }
+    })
+}
 
 /** Features already decided and modeled (not the one being computed). */
 function modeled(session: Session, exceptKey: string) {
@@ -26,15 +39,14 @@ export function subjectValues(session: Session): Record<string, number | null> {
 }
 
 /** Run every method for one feature on every dataset that has data. */
-export function computeFeature(session: Session, key: string): DatasetResults[] {
+export function computeFeature(session: Session, key: string, prepared: PreparedDataset[]): DatasetResults[] {
   const feature = FEATURES[key]
   const subj = subjectValues(session)
   const sv = subj[key]
   const decided = modeled(session, key)
-  return session.datasets
-    .filter((d) => d.properties.length > 0)
+  return prepared
     .map((d) => {
-      let props = toProps(d)
+      let props = d.props
       if (decided.length) props = modelPrices(props, decided, subj)
       const values = props.map((p) => feature.get(p)).filter((v): v is number => v !== null)
       const results: MethodResult[] = []

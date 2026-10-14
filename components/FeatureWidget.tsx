@@ -8,10 +8,10 @@ import { Toggle } from './ui'
 const ROWS: { label: string; match: (r: MethodResult) => boolean }[] = [
   { label: 'Paired Sales', match: (r) => r.method === 'TPS' },
   { label: 'Grouped Data', match: (r) => r.method === 'GD' },
-  { label: 'Regression', match: (r) => r.method === 'OLS' || r.method === 'TS' },
+  { label: 'Regression', match: (r) => r.method === 'OLS' || r.method === 'TS' || r.method === 'ROLS' || r.method === 'LAD' },
   { label: 'Sensitivity', match: (r) => r.method === 'SENS' },
 ]
-const NAMES: Record<string, string> = { TPS: 'Paired sales', GD: 'Grouped data', OLS: 'OLS regression', TS: 'Theil-Sen regression', SENS: 'Sensitivity' }
+const NAMES: Record<string, string> = { TPS: 'Paired sales', GD: 'Grouped data', OLS: 'OLS regression', TS: 'Theil-Sen regression', ROLS: 'Robust OLS regression', LAD: 'Least absolute deviation', SENS: 'Sensitivity' }
 const COLORS = ['var(--color-dataset-1)', 'var(--color-dataset-2)', 'var(--color-dataset-3)']
 const SHAPES = ['circle', 'square', 'diamond'] as const
 

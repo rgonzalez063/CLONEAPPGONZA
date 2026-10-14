@@ -1,4 +1,4 @@
-import { mean, median, meanAbs, ols, quantile, theilSen, trimIQR } from './stats'
+import { lad, mean, median, meanAbs, ols, quantile, robustOls, theilSen, trimIQR } from './stats'
 import type { FeatureDef, MatchRule, MethodResult, Property } from './types'
 
 const val = (p: Property, f: FeatureDef) => f.get(p)
@@ -172,5 +172,19 @@ export function regression(props: Property[], studied: FeatureDef): MethodResult
       detail: { intercept: t.intercept, n: list.length },
     })
   } else out.push(noResult('TS', '', 'not enough variation'))
+  const r = list.length >= 3 ? robustOls(x, y) : null
+  if (r) {
+    out.push({
+      method: 'ROLS', variant: '', value: r.slope,
+      mae: meanAbs(y.map((yi, i) => yi - (r.intercept + r.slope * x[i]))), status: 'ok', detail: { intercept: r.intercept, n: list.length },
+    })
+  } else out.push(noResult('ROLS', '', 'not enough variation'))
+  const l = list.length >= 3 ? lad(x, y) : null
+  if (l) {
+    out.push({
+      method: 'LAD', variant: '', value: l.slope,
+      mae: l.sum / list.length, status: 'ok', detail: { intercept: l.intercept, n: list.length },
+    })
+  } else out.push(noResult('LAD', '', 'not enough variation'))
   return out
 }

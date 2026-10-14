@@ -1,2 +1,6 @@
 import { defineConfig } from 'vitest/config'
-export default defineConfig({ test: { include: ['engines/**/*.test.ts', 'lib/**/*.test.ts'] } })
+import path from 'node:path'
+export default defineConfig({
+  resolve: { alias: { '@': path.resolve(__dirname) } },
+  test: { include: ['engines/**/*.test.ts', 'lib/**/*.test.ts'] },
+})
