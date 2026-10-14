@@ -8,9 +8,10 @@ export const defaultCommentOptions: CommentOptions = { range: true, methods: tru
 
 export const METHOD_NAMES: Record<MethodResult['method'], string> = {
   TPS: 'paired sales', GD: 'grouped data', OLS: 'ordinary least squares regression', ROLS: 'robust least squares regression',
-  TS: 'Theil-Sen regression', LAD: 'least absolute deviation regression', SENS: 'sensitivity analysis',
+  TS: 'Theil-Sen regression', LAD: 'least absolute deviation regression', LMS: 'least median of squares regression',
+  RLMS: 'robust least median of squares regression', MODQ: 'modified quantile regression', SENS: 'sensitivity analysis',
 }
-const REGRESSION = new Set(['OLS', 'ROLS', 'TS', 'LAD'])
+const REGRESSION = new Set(['OLS', 'ROLS', 'TS', 'LAD', 'LMS', 'RLMS', 'MODQ'])
 
 /** Results the appraiser kept: calculated, and not outside the limits they set on the widget. */
 export function relevantResults(data: DatasetResults[], w: Pick<WidgetState, 'low' | 'high'>): MethodResult[] {

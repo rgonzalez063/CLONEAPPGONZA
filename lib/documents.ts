@@ -47,6 +47,9 @@ const CODES: { code: string; match: (r: MethodResult) => boolean; name: string }
   { code: 'ROLS', match: (r) => r.method === 'ROLS', name: 'Robust ordinary least squares' },
   { code: 'TS', match: (r) => r.method === 'TS', name: 'Theil-Sen regression' },
   { code: 'LAD', match: (r) => r.method === 'LAD', name: 'Least absolute deviation regression' },
+  { code: 'LMS', match: (r) => r.method === 'LMS', name: 'Least median of squares' },
+  { code: 'RLMS', match: (r) => r.method === 'RLMS', name: 'Robust least median of squares' },
+  { code: 'ModQ', match: (r) => r.method === 'MODQ', name: 'Modified quantile regression' },
 ]
 
 export function buildSummary(i: ReportInput): Block[] {
@@ -97,6 +100,9 @@ const OVERVIEW: Record<string, string> = {
   ROLS: 'Robust least squares. The same slope formula, centered on medians instead of means, so unusual sales pull it less.',
   TS: 'Theil-Sen. The median of the slopes of every line through two sales, which resists outliers.',
   LAD: 'Least absolute deviation. Of all lines through two sales, the one with the smallest sum of absolute errors.',
+  LMS: 'Least median of squares. The ordinary least squares slope formula with each sum replaced by a median, which shrinks the pull of a few unusual sales.',
+  RLMS: 'Robust least median of squares. The same, with the medians (not the means) as the center of the data.',
+  MODQ: 'Modified quantile. Robust least squares tried with the feature centered on its 10th through 90th percentile, keeping the one with the best fit.',
 }
 export function buildMethodOverview(i: ReportInput): Block[] {
   const used = new Set(Object.values(i.results).flat().flatMap((d) => d.results).filter((r) => r.status === 'ok').map((r) => r.method))

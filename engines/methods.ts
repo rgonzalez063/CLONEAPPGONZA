@@ -1,4 +1,4 @@
-import { lad, mean, median, meanAbs, ols, quantile, robustOls, theilSen, trimIQR } from './stats'
+import { lad, mean, median, meanAbs, medianSquares, modifiedQuantile, ols, quantile, robustOls, theilSen, trimIQR } from './stats'
 import type { FeatureDef, MatchRule, MethodResult, Property } from './types'
 
 const val = (p: Property, f: FeatureDef) => f.get(p)
@@ -188,5 +188,19 @@ export function regression(props: Property[], studied: FeatureDef): MethodResult
       mae: l.sum / list.length, status: 'ok', detail: { intercept: l.intercept, n: list.length },
     })
   } else out.push(noResult('LAD', '', 'not enough variation'))
+  const line = (method: 'LMS' | 'RLMS', fit: { slope: number; intercept: number } | null): MethodResult =>
+    fit ? {
+      method, variant: '', value: fit.slope, mae: meanAbs(y.map((yi, i) => yi - (fit.intercept + fit.slope * x[i]))), status: 'ok',
+      detail: { intercept: fit.intercept, n: list.length },
+    } : noResult(method, '', 'invalid response: most sales share the same value')
+  out.push(line('LMS', list.length >= 3 ? medianSquares(x, y, 'mean') : null))
+  out.push(line('RLMS', list.length >= 3 ? medianSquares(x, y, 'median') : null))
+  const q = list.length >= 3 ? modifiedQuantile(x, y) : null
+  if (q) {
+    out.push({
+      method: 'MODQ', variant: '', value: q.slope, mae: meanAbs(y.map((yi, i) => yi - (q.intercept + q.slope * x[i]))), status: 'ok',
+      detail: { intercept: q.intercept, r2: q.r2, percentile: q.percentile, n: list.length },
+    })
+  } else out.push(noResult('MODQ', '', 'not enough variation'))
   return out
 }

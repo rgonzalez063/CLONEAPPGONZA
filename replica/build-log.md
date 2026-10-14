@@ -3,7 +3,7 @@
 | ID | screen | date | status | missing | notes |
 | --- | --- | --- | --- | --- | --- |
 | shell | Next.js 15 + Tailwind (tokens wired), routes, fake data layer (`lib/store.ts`, localStorage) | 2026-10-13 | done | | data layer keeps signatures for the later Postgres swap |
-| engines | `engines/` pure TypeScript: grouped data, true paired sales, sensitivity, OLS, robust OLS, Theil-Sen, LAD, modeling, time trends (linear, poly 2-4) | 2026-10-14 | partial | LMS, robust LMS, modified quantile, adjusted pairs, depreciated cost | 9 unit tests pass: textbook examples (sensitivity $85, Theil-Sen $75, pairs) and a synthetic $50/sqft market |
+| engines | `engines/` pure TypeScript: grouped data, true paired sales, sensitivity, OLS, robust OLS, Theil-Sen, LAD, modeling, time trends (linear, poly 2-4) | 2026-10-14 | partial | adjusted pairs, depreciated cost | 9 unit tests pass: textbook examples (sensitivity $85, Theil-Sen $75, pairs) and a synthetic $50/sqft market |
 | S01 | Entry screen | 2026-10-13 | partial | other MLS/types/templates, save-as-default | |
 | S02 | Sessions list | 2026-10-13 | partial | clone, favorite | |
 | S04 | Datasets | 2026-10-13 | partial | property grid (S06), data source settings, dataset settings | generic CSV header aliases; needs a real HARMLS export to confirm. "Load sample" is synthetic |
@@ -72,8 +72,17 @@ Acceptance test: `lib/real-sample.test.ts` (skipped when the private exports in 
 - **Screen:** `/session/[id]/activity` with search, a kind-of-event filter and sortable columns. The workfile zip now includes an Activity-Log PDF and RTF.
 - **Checked:** 71 unit tests (new: clone independence, favorites, event ordering, privacy, cascade, cap, the change detector). Browser run with your files: log content, search, filter, sort, favorite persists across reload, clone matches then diverges without touching the original, the clone's own log, zip contains the log, a second user gets 404 for the log, clone and posting events.
 
+## LMS, robust LMS and modified quantile (2026-10-14)
+- **Worked out from your Synapse documents** (the formulas in the help text were images, so I fitted candidates against the printed results):
+  - **LMS:** the OLS slope with each sum replaced by a median: slope = median((x - mean x)(y - mean y)) / median((x - mean x)^2); intercept = mean y - slope * mean x.
+  - **Robust LMS:** the same centered on medians instead of means. When the median spread of x is zero (most sales share one bath count, for example) there is no slope, which Synapse prints as "Invalid Response"; the clone shows no result.
+  - **Modified quantile:** robust least squares with x centered on its 10th, 20th ... 90th percentile and y always on its median; the percentile with the highest r-squared wins (the clone records which).
+- **Checked against your real session, dataset 1** (6 sales, four features: GLA, lot size, full baths, garage): all 11 reported slopes and intercepts match, and the GLA error scores match exactly (6,351 / 7,800 / 6,559). The three invalid-response cases match.
+- **Not matching:** dataset 2 (209 sales). LMS ($160 with the automatic time trend; $149.50 without one against Synapse's $150) and robust LMS ($172.76 against $170) are close; modified quantile picks the 60th percentile ($153) where Synapse printed the plain median fit ($145), and for the full-bath feature Synapse's pick looks like a different rule. The same data differences that move the pair counts probably play a part. Not chased further.
+- R-squared for LMS and robust LMS is not shown: Synapse printed values above 1 (1.488), which is a quirk of the median formula, not a fit measure.
+
 ## Harder than expected / gaps
-- **Not reproduced:** least median of squares, robust LMS and modified quantile (Synapse's definitions are not clear from the text; my readings gave different numbers), dataset 2 sensitivity ($134 vs 140 to 166 depending on trend and trim), and paired-sales pair counts (Synapse found 237 pairs, my six-feature rule found 85; Synapse matches on about 25 features).
+- **Not reproduced:** modified quantile on dataset 2 (see below), dataset 2 sensitivity ($134 vs 140 to 166 depending on trend and trim), and paired-sales pair counts (Synapse found 237 pairs, my six-feature rule found 85; Synapse matches on about 25 features).
 - **Dataset 2 time trend:** my best-fit rule picks a 4th-degree polynomial (r² 0.02, essentially flat). Synapse printed no formula for dataset 2, so it probably used none. The log trend is disabled because ln(0) is undefined for the oldest sale.
 - Error scores for regression match Synapse; sensitivity and grouped-data error scores use my definition and differ.
 - Mobile: layout works but the limit sliders are cramped; revisit in design polish.

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { findPairs, lad, ols, pairedSales, regression, robustOls, sensitivity, theilSen } from '../engines'
+import { findPairs, lad, medianSquares, modifiedQuantile, ols, pairedSales, regression, robustOls, sensitivity, theilSen } from '../engines'
 import { ALL_FEATURES, FEATURES, resolveFeature } from './features'
 import { importCsv } from './importer'
 import { applyTransactional, defaultTransactional } from './transactional'
@@ -69,6 +69,43 @@ describe.skipIf(!have)('real HARMLS sample session (subject effective 2026-10-09
       expect(Math.abs(robustOls(x, y)!.slope - e.rols), `${k} ROLS`).toBeLessThanOrEqual(e.tol)
       expect(Math.abs(lad(x, y)!.slope - e.lad), `${k} LAD`).toBeLessThanOrEqual(e.tol)
     }
+  })
+  it('dataset 1 matches Synapse for least median of squares, robust LMS and modified quantile (slope and intercept)', () => {
+    const props = toProps(t1!)
+    // [LMS slope, LMS intercept, RLMS slope, RLMS intercept, ModQ slope, ModQ intercept] from the Synapse documents; null = "Invalid Response".
+    const expected: Record<string, [number, number, number | null, number | null, number, number]> = {
+      gla: [50, 161868, 42, 171381, 43, 172539],
+      lot_size: [3.53, 214695, 3.87, 209898, -0.52, 239748],
+      baths_full: [9444, 214763, null, null, 10268, 214625],
+      garage: [5133, 232520, 15348, 227487, 3542, 233390],
+    }
+    for (const [k, e] of Object.entries(expected)) {
+      const pts = props.filter((p) => p.values[k] !== null)
+      const x = pts.map((p) => p.values[k] as number)
+      const y = pts.map((p) => p.price)
+      const rel = (a: number, b: number) => Math.abs(a - b) / Math.max(Math.abs(b), 1e-9)
+      const l = medianSquares(x, y, 'mean')!
+      expect(rel(l.slope, e[0]), `${k} LMS slope`).toBeLessThan(0.01)
+      expect(Math.abs(l.intercept - e[1]), `${k} LMS intercept`).toBeLessThan(15)
+      const r = medianSquares(x, y, 'median')
+      if (e[2] === null) expect(r, `${k} RLMS invalid`).toBeNull()
+      else {
+        expect(rel(r!.slope, e[2]), `${k} RLMS slope`).toBeLessThan(0.01)
+        expect(Math.abs(r!.intercept - e[3]!), `${k} RLMS intercept`).toBeLessThan(15)
+      }
+      const q = modifiedQuantile(x, y)!
+      expect(rel(q.slope, e[4]), `${k} ModQ slope`).toBeLessThan(0.01)
+      expect(Math.abs(q.intercept - e[5]), `${k} ModQ intercept`).toBeLessThan(15)
+    }
+  })
+  it('dataset 2 GLA is close to Synapse for LMS ($150) and robust LMS ($170); modified quantile ($145) is not reproduced there', () => {
+    const props = toProps(applyTransactional(d2raw!.properties, { ...defaultTransactional, timeModel: 'none' }, EFFECTIVE))
+    const x = props.map((p) => p.values.gla as number)
+    const y = props.map((p) => p.price)
+    console.log('DS2 GLA LMS', medianSquares(x, y, 'mean'), 'RLMS', medianSquares(x, y, 'median'), 'ModQ', modifiedQuantile(x, y))
+    expect(Math.abs(medianSquares(x, y, 'mean')!.slope - 150)).toBeLessThan(2)
+    expect(Math.abs(medianSquares(x, y, 'median')!.slope - 170)).toBeLessThan(4)
+    // Synapse printed 145 (the plain median-centered fit); the best-fit percentile here is the 60th ($153). Left unmatched on purpose.
   })
   it('dataset 2 GLA matches Synapse for OLS ($154) and Theil-Sen ($162) within $1 (no time trend: the report printed no trend formula for dataset 2)', () => {
     const props = toProps(applyTransactional(d2raw!.properties, { ...defaultTransactional, timeModel: 'none' }, EFFECTIVE))

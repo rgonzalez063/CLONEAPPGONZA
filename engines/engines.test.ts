@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { findPairs, groupedData, pairedSales, regression, sensitivity } from './methods'
 import { modelPrices } from './modeling'
-import { median, ols, theilSen, trimIQR } from './stats'
+import { median, medianSquares, modifiedQuantile, ols, theilSen, trimIQR } from './stats'
 import type { FeatureDef, Property } from './types'
 
 const gla: FeatureDef = { key: 'gla', label: 'GLA', unit: 'sqft', get: (p) => p.values.gla ?? null, rule: { type: 'pct', pct: 5 } }
@@ -89,5 +89,34 @@ describe('modeling', () => {
     const props = [prop('a', 200000, { gla: 1900 })]
     const out = modelPrices(props, [{ feature: gla, rate: 50 }], { gla: 2000 })
     expect(out[0].price).toBe(205000)
+  })
+})
+
+describe('least median of squares, robust LMS and modified quantile', () => {
+  const x = [1000, 1200, 1400, 1600, 1800, 2000, 2200]
+  const line = x.map((v) => 100000 + 50 * v)
+  it('recover an exact line', () => {
+    expect(medianSquares(x, line, 'mean')!.slope).toBeCloseTo(50, 6)
+    expect(medianSquares(x, line, 'median')!.slope).toBeCloseTo(50, 6)
+    const q = modifiedQuantile(x, line)!
+    expect(q.slope).toBeCloseTo(50, 6)
+    expect(q.intercept).toBeCloseTo(100000, 3)
+  })
+  it('are not dragged by one wild sale as far as OLS', () => {
+    const y = [...line]; y[6] += 400000
+    const wild = ols(x, y)!.slope
+    expect(Math.abs(medianSquares(x, y, 'median')!.slope - 50)).toBeLessThan(Math.abs(wild - 50))
+  })
+  it('report no result when most sales share one value', () => {
+    expect(medianSquares([2, 2, 2, 2, 3, 1], [1, 2, 3, 4, 5, 6], 'median')).toBeNull()
+    const r = regression([1, 2, 3, 4, 5, 6].map((i) => prop(String(i), 200000 + i * 1000, { baths: i < 5 ? 2 : 3 })), baths)
+    expect(r.find((m) => m.method === 'RLMS')!.status).toBe('no_result')
+  })
+  it('modified quantile picks the percentile with the best fit and says which', () => {
+    const r = regression(x.map((v, i) => prop(String(i), line[i], { gla: v })), gla)
+    const m = r.find((v) => v.method === 'MODQ')!
+    expect(m.status).toBe('ok')
+    expect(m.detail!.percentile).toBeGreaterThanOrEqual(10)
+    expect(r.map((v) => v.method)).toEqual(['OLS', 'TS', 'ROLS', 'LAD', 'LMS', 'RLMS', 'MODQ'])
   })
 })

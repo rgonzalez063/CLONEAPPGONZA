@@ -105,3 +105,43 @@ export function lad(x: number[], y: number[], maxCandidates = 400) {
   }
   return best
 }
+
+/**
+ * Least median of squares, as Synapse's support documents describe it: the OLS slope formula with every
+ * sum replaced by a median. slope = median((x - cx)(y - cy)) / median((x - cx)^2), where the centers are the
+ * means (LMS) or the medians (robust LMS). Returns null when the median spread of x is zero (for example a
+ * feature where most sales share one value), which Synapse reports as an invalid response.
+ */
+export function medianSquares(x: number[], y: number[], center: 'mean' | 'median') {
+  const c = center === 'mean' ? mean : median
+  const cx = c(x)
+  const cy = c(y)
+  const spread = median(x.map((v) => (v - cx) ** 2))
+  if (spread === 0) return null
+  const slope = median(x.map((v, i) => (v - cx) * (y[i] - cy))) / spread
+  return { slope, intercept: cy - slope * cx }
+}
+
+/**
+ * Modified quantile regression: robust least squares, but x is centered on its q-th percentile (10, 20 ... 90)
+ * instead of its median, y stays centered on its median, and the percentile whose fit has the highest
+ * correlation-squared wins. r2 = (cov / (sx * sy))^2 with every deviation taken from those centers.
+ */
+export function modifiedQuantile(x: number[], y: number[]) {
+  const n = x.length
+  const cy = median(y)
+  const sy = Math.sqrt(y.reduce((a, v) => a + (v - cy) ** 2, 0) / n)
+  if (sy === 0) return null
+  let best: { slope: number; intercept: number; r2: number; percentile: number } | null = null
+  for (let p = 10; p <= 90; p += 10) {
+    const cx = quantile(x, p / 100)
+    let sxx = 0
+    let sxy = 0
+    for (let i = 0; i < n; i++) { sxx += (x[i] - cx) ** 2; sxy += (x[i] - cx) * (y[i] - cy) }
+    if (sxx === 0) continue
+    const r = sxy / n / (Math.sqrt(sxx / n) * sy)
+    const slope = sxy / sxx
+    if (!best || r * r > best.r2 + 1e-12) best = { slope, intercept: cy - slope * cx, r2: r * r, percentile: p }
+  }
+  return best
+}
