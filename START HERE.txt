@@ -1,0 +1,31 @@
+ADJUSTMENT SUPPORT: how to run it on your computer
+===================================================
+
+1. Install Node.js (once). Go to https://nodejs.org, download the "LTS" version, run the installer, accept the defaults.
+
+2. Unzip this folder somewhere you will keep it, for example Documents.
+
+3. Start the app:
+     Windows : double-click  start-windows.bat
+     Mac     : double-click  start-mac.command
+               (first time only: right-click it, choose Open, then Open again)
+     Linux   : run  ./start.sh
+
+   The first start takes a few minutes while it installs and builds. After that it takes seconds.
+   Your browser opens at http://localhost:3000. If it does not, open that address yourself.
+
+4. First visit: choose "First time here" and create your account (an email and a password of 10 or more characters).
+   The account lives only on your computer.
+
+5. To stop the app, close the window that opened when you started it.
+
+YOUR DATA
+- Everything you save is in the folder named ".data" inside this folder. Copy it somewhere safe now and then as a backup.
+- To move to a new computer, copy the whole folder, including ".data".
+- Forgot your password? Stop the app, open a terminal in this folder and run:  node scripts/set-password.mjs you@example.com "a new password of 10+ characters"
+
+USING IT
+- New session: pick the effective date, then drop in the two MLS exports (the sales around the subject, then the wider neighborhood).
+- Enter the subject (address, GLA, lot size, baths, garage). Optional: quality, condition and your cost per square foot for depreciated cost.
+- Each feature (GLA, lot size, baths...) shows every method's result; set the adjustment, mark it Done.
+- Export: summary, comments and the full workfile zip (with an activity log).
