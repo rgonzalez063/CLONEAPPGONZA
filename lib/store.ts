@@ -20,6 +20,7 @@ export interface Session {
   subject: Subject | null
   widgets: Record<string, WidgetState>
   transactional?: TransactionalSettings
+  commentTransactional?: boolean
 }
 export interface Dataset { slot: number; name: string; properties: StoredProperty[]; excludedAfterEffective: number }
 export interface Subject {
@@ -30,6 +31,7 @@ export interface WidgetState {
   chosen: number | null; done: boolean; locked: boolean; model: boolean
   low: number | null; high: number | null // constraint (null = unconstrained)
   snip?: boolean
+  comment?: { range: boolean; methods: boolean; extra: string }
   subject?: number | null // subject's value for features not in the subject form (default: has it)
 }
 

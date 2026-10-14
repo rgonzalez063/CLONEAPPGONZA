@@ -10,6 +10,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
     "next": "^15.5.27",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"

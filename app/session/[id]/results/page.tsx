@@ -4,6 +4,9 @@ import { useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { FeatureWidget } from '@/components/FeatureWidget'
 import { Button, Modal, TextInput } from '@/components/ui'
+import { CommentsModal, ExportModal } from '@/components/ReportModals'
+import type { ReportInput } from '@/lib/documents'
+import { defaultCommentOptions } from '@/lib/comments'
 import { computeFeature, defaultWidget, prepareDatasets, subjectValues } from '@/lib/analysis'
 import { defaultTransactional, type TransactionalSettings } from '@/lib/transactional'
 import { FEATURE_ORDER, PLAIN_MENU, FEATURES, compareKey, groupKey, groupMenu, resolveFeature } from '@/lib/features'
@@ -114,6 +117,7 @@ export default function ResultsPage() {
   const [s, setS] = useState<Session | null | undefined>(undefined)
   const [asking, setAsking] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [panel, setPanel] = useState<'comments' | 'export' | null>(null)
   useEffect(() => { void getSession(id).then((x) => { setS(x); if (x && !x.subject) setAsking(true) }) }, [id])
 
   // Recompute only when data, subject, or modeled/chosen values change (not on slider constraint moves).
@@ -148,6 +152,8 @@ export default function ResultsPage() {
           <Link className="rounded-md border border-border-input px-3 py-2 text-sm" href={`/session/${session.id}/datasets`}>Datasets</Link>
           <Button variant="secondary" onClick={() => setAsking(true)}>Edit subject</Button>
           <Button variant="secondary" onClick={() => setAdding(true)}>Add feature</Button>
+          <Button variant="secondary" onClick={() => setPanel('comments')}>View comments</Button>
+          <Button onClick={() => setPanel('export')}>Export</Button>
         </div>
       </div>
       <TransactionalPanel
@@ -163,6 +169,19 @@ export default function ResultsPage() {
             onRemove={() => { const { [k]: _gone, ...rest } = widgets; void save({ ...session, widgets: rest }) }} />
         ))}
       </div>
+      {panel && (() => {
+        const input: ReportInput = {
+          session, prepared, results: computed, widgets,
+          commentOptions: Object.fromEntries(Object.entries(widgets).map(([k, w]) => [k, w.comment ?? defaultCommentOptions])),
+          analysisDate: new Date().toISOString().slice(0, 10),
+        }
+        const transactional = session.commentTransactional ?? true
+        return panel === 'comments'
+          ? <CommentsModal input={input} transactional={transactional} onClose={() => setPanel(null)}
+              onTransactional={(v) => void save({ ...session, commentTransactional: v })}
+              onChange={(k, o) => void patch(k, { comment: o })} />
+          : <ExportModal input={input} transactional={transactional} onClose={() => setPanel(null)} />
+      })()}
       {adding && (
         <AddFeatureModal existing={keys} onClose={() => setAdding(false)}
           onAdd={(key) => { setAdding(false); void patch(key, defaultWidget()) }} />

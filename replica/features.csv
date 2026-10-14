@@ -54,13 +54,13 @@ Save layout to template,results,should,yes,no,
 Lot size unit toggle (sqft or acres),results,could,yes,no,
 Prior choices from similar sessions,results,should,yes,no,
 Peer results (anonymous other appraisers),results,skip,yes,no,needs a user network
-Auto-generated comments with per-feature options and Apply to All,export,must,yes,no,
-Custom comment per feature,export,should,yes,no,
-Export: Primary Adjustment PDF and RTF,export,must,yes,no,
-Export: Comments PDF and RTF,export,must,yes,no,
-Export: Method overview PDF,export,should,yes,no,
+Auto-generated comments with per-feature options and Apply to All,export,must,yes,yes,"View comments dialog: include range, include methods, apply to all; wording is our own"
+Custom comment per feature,export,should,yes,yes,
+Export: Primary Adjustment PDF and RTF,export,must,yes,yes,"results by method per finished feature, starred when outside your limits"
+Export: Comments PDF and RTF,export,must,yes,yes,
+Export: Method overview PDF,export,should,yes,yes,own wording; lists only methods used
 Export images (PNG) of the three documents,export,could,yes,no,for ACI users
-Digital workfile folder (all documents plus original CSVs),export,should,yes,no,
+Digital workfile folder (all documents plus original CSVs),export,should,yes,partial,"zip of summary, comments, overview, settings, property info, per-feature details (PDF and RTF) and the sales used as CSV; original MLS files are not stored"
 Matched pairs document,export,could,yes,no,large
 Billing and subscription,billing,skip,yes,no,internal tool
 Help center and video library,help,skip,yes,no,

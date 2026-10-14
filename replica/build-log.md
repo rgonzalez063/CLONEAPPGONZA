@@ -30,6 +30,14 @@ Acceptance test: `lib/real-sample.test.ts` (skipped when the private exports in 
 - **Paired sales:** with the extra must-match features (half baths, style, pool, stories, beds, lot, baths, garage) the GLA pair count on dataset 2 is 231 (Synapse 237) and the paired-sales error after outlier removal is 74/72 (Synapse 73/72). Adding carport, fireplace, sewer and water as must-match dropped the count to 167, so they are off by default until a settings screen exists. Pair rates still differ from Synapse (mine 99/119, Synapse 85/98): the pair set looks right but the per-pair formula or trimming differs.
 - Group option labels are my own words, so counts differ slightly from Synapse's (cooling: central 185, none 6; Synapse showed 184 and 6). Common Areas and Pool Type are not built (no source column in the sample export).
 
+## Comments and export (2026-10-14)
+- **View comments:** one paragraph per finished feature with the value, the range of results you kept (results outside your limits are left out), and the methods behind it. Per feature: include range, include methods, your own sentence. "Apply to all" copies the two checkboxes. An optional first sentence explains the order of transactional adjustments.
+- **Export dialog:** primary adjustment summary (landscape), comments, method overview, as PDF or RTF (RTF is for pasting into your report form). Warns when nothing is marked Done.
+- **Workfile (zip):** summary, comments, method overview, settings, property information, a details page per feature (each in PDF and RTF) and `Data/properties-used.csv`.
+- Verified in the browser with the real files: downloads land with correct names, the PDF text and the zip contents were read back, no console errors. Unit tests cover comment wording and the RTF writer (22 tests total).
+- Wording of every comment and document is my own, not copied from Synapse's reports.
+- Not included yet: image (PNG) versions, the matched-pairs document, the original MLS CSVs (only normalized sales are stored), manual property edits log, peer results.
+
 ## Harder than expected / gaps
 - **Not reproduced:** least median of squares, robust LMS and modified quantile (Synapse's definitions are not clear from the text; my readings gave different numbers), dataset 2 sensitivity ($134 vs 140 to 166 depending on trend and trim), and paired-sales pair counts (Synapse found 237 pairs, my six-feature rule found 85; Synapse matches on about 25 features).
 - **Dataset 2 time trend:** my best-fit rule picks a 4th-degree polynomial (r² 0.02, essentially flat). Synapse printed no formula for dataset 2, so it probably used none. The log trend is disabled because ln(0) is undefined for the oldest sale.
