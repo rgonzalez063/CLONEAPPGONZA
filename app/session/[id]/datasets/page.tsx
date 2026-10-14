@@ -71,6 +71,9 @@ export default function DatasetsPage() {
                 <Button variant="secondary" onClick={() => void setDataset(d.slot, (x) => ({ ...x, properties: syntheticMarket(120, 11 + d.slot * 7, s.effectiveDate) }))}>Load sample (synthetic)</Button>
               )}
               {d.properties.length > 0 && (
+                <Link className="text-accent" href={`/session/${s.id}/datasets/${d.slot}/properties`}>View or edit sales</Link>
+              )}
+              {d.properties.length > 0 && (
                 <Button variant="link" onClick={() => { if (confirm('Remove all properties from this dataset?')) void setDataset(d.slot, (x) => ({ ...x, properties: [], excludedAfterEffective: 0 })) }}>Remove all</Button>
               )}
             </div>

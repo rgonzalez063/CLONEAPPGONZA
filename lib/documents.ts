@@ -157,6 +157,23 @@ export function buildSettings(i: ReportInput): Block[] {
   ]
 }
 
+function manualBlocks(i: ReportInput): Block[] {
+  const removed: string[][] = []
+  const edited: string[][] = []
+  for (const d of i.session.datasets) {
+    for (const p of d.properties) {
+      if (p.deleted) removed.push([d.name, p.id])
+      for (const [field, e] of Object.entries(p.edits ?? {})) edited.push([d.name, p.id, field, String(e.from ?? 'empty'), String(e.to ?? 'empty')])
+    }
+  }
+  return [
+    { kind: 'h', text: 'Sales removed by hand' },
+    removed.length ? { kind: 'table', head: ['Dataset', 'MLS #'], rows: removed } : { kind: 'p', text: 'None.' },
+    { kind: 'h', text: 'Values edited by hand' },
+    edited.length ? { kind: 'table', head: ['Dataset', 'MLS #', 'Field', 'Original', 'Now'], rows: edited } : { kind: 'p', text: 'None.' },
+  ]
+}
+
 export function buildPropertyInfo(i: ReportInput): Block[] {
   return [
     { kind: 'title', text: 'Property information' },
@@ -164,7 +181,7 @@ export function buildPropertyInfo(i: ReportInput): Block[] {
     { kind: 'table', head: ['Dataset', 'Leasehold', 'Seller financed', 'REO', 'Short sale', 'After effective date'], rows: i.prepared.map((d) => [
       d.name, String(d.report.removed.leasehold), String(d.report.removed.nonCash), String(d.report.removed.reo), String(d.report.removed.shortSale), String(d.excludedAfterEffective),
     ]) },
-    { kind: 'p', text: 'Properties edited or removed by hand: none recorded in this version.' },
+    ...manualBlocks(i),
   ]
 }
 

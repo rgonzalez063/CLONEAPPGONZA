@@ -12,8 +12,8 @@ Append more properties to a dataset,data,should,yes,yes,
 Remove all properties from a dataset,data,should,yes,yes,
 Sold only filter and effective-date cutoff with excluded count,data,must,yes,yes,
 Up to 5000 properties per dataset,data,should,yes,no,
-View/modify properties grid (sort search edit delete recover),data,should,yes,no,
-Recalculate after data edits,data,must,yes,no,
+View/modify properties grid (sort search edit delete recover),data,should,yes,partial,"sort, search, select, edit by double-click or Enter, undo, remove and recover, results recompute; no per-column data source switch or MLS-vs-public-records marker (no public records data)"
+Recalculate after data edits,data,must,yes,yes,"results recompute on every edit, removal or recovery"
 Missing-field upload validation,data,must,yes,yes,lists missing fields
 Per-MLS import field mapping,data,must,yes,partial,HARMLS column names built in; no mapping screen
 Public records source and per-feature source choice,data,skip,yes,no,licensed (DataTree)

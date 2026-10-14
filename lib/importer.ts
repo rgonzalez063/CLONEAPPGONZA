@@ -11,6 +11,7 @@ export interface StoredProperty {
   meta?: { concessions: number; financing: string; special: string; ownership: string }
   text?: Record<string, string> // source text columns used by feature groups
   deleted?: boolean
+  edits?: Record<string, { from: number | string | null; to: number | string | null }> // field -> original and current
 }
 
 /**

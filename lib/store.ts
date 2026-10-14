@@ -21,6 +21,7 @@ export interface Session {
   widgets: Record<string, WidgetState>
   transactional?: TransactionalSettings
   commentTransactional?: boolean
+  dataVersion?: number // bumped whenever properties are edited, deleted or recovered, so results recompute
 }
 export interface Dataset { slot: number; name: string; properties: StoredProperty[]; excludedAfterEffective: number }
 export interface Subject {

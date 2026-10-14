@@ -121,7 +121,7 @@ export default function ResultsPage() {
   useEffect(() => { void getSession(id).then((x) => { setS(x); if (x && !x.subject) setAsking(true) }) }, [id])
 
   // Recompute only when data, subject, or modeled/chosen values change (not on slider constraint moves).
-  const prepKey = s ? JSON.stringify([s.datasets.map((d) => d.properties.length), s.transactional, s.effectiveDate]) : ''
+  const prepKey = s ? JSON.stringify([s.datasets.map((d) => d.properties.length), s.dataVersion ?? 0, s.transactional, s.effectiveDate]) : ''
   const prepared = useMemo(() => (s ? prepareDatasets(s) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [prepKey])

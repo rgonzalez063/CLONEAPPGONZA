@@ -8,6 +8,7 @@
 | S02 | Sessions list | 2026-10-13 | partial | clone, favorite | |
 | S04 | Datasets | 2026-10-13 | partial | property grid (S06), data source settings, dataset settings | generic CSV header aliases; needs a real HARMLS export to confirm. "Load sample" is synthetic |
 | S05 | Subject modal | 2026-10-13 | partial | quality, effective age or depreciation percent, basement, half-story fields | |
+| S06 | View/modify properties | 2026-10-14 | partial | per-column data source switch, public records mismatch marker | see below |
 | S09 | Results (Lot Size, GLA, Full Bath, Garage) | 2026-10-13 | partial | comments, export, prior choices, reorder, transactional settings, time adjustment, depreciated cost | the dot widget, constraint, snip, value input, Done, Lock, Model all work |
 | design | `/design` primitives page | 2026-10-13 | done | | |
 
@@ -37,6 +38,15 @@ Acceptance test: `lib/real-sample.test.ts` (skipped when the private exports in 
 - Verified in the browser with the real files: downloads land with correct names, the PDF text and the zip contents were read back, no console errors. Unit tests cover comment wording and the RTF writer (22 tests total).
 - Wording of every comment and document is my own, not copied from Synapse's reports.
 - Not included yet: image (PNG) versions, the matched-pairs document, the original MLS CSVs (only normalized sales are stored), manual property edits log, peer results.
+
+## Property grid (2026-10-14)
+- **Screen:** `Datasets > View or edit sales` opens one dataset's sales in a grid (14 columns). Click a header to sort (again to reverse; empty values always last). The search box matches every column, including what is shown (1,500 and $210,000) as well as raw values. The grid draws only the visible rows, so 5,000 sales stay smooth.
+- **Edit:** double-click a cell, or focus it and press Enter. Typing replaces the old value; Enter saves, Escape cancels. Bad input shows a plain message and keeps the old value (numbers only, whole numbers where needed, yyyy-mm-dd dates, a sale price above zero, a sale date required). Edited cells turn blue with an "undo" link; the first original value is kept, and editing a value back removes the mark.
+- **Remove and recover:** select rows (or all shown), Remove selected; "View removed" lists them with Recover selected.
+- **Results follow the data:** every edit, removal or recovery bumps a data version, which recomputes the transactional adjustments, time trend and every method.
+- **Workfile:** the Property Information document now lists every sale removed by hand and every value edited, with the original and current value.
+- **Verified in the browser with the real dataset 2:** sorted, searched, removed the two highest sales, edited a GLA to 9,999 with the keyboard, tried invalid input; GLA OLS for dataset 2 moved from $153 to $63 and returned to exactly $153 (error 44,890) after recovering and undoing. No console errors. 36 unit tests pass.
+- Bug found and fixed while testing: typing into a cell appended to the old value instead of replacing it; the editor now selects the text on open.
 
 ## Harder than expected / gaps
 - **Not reproduced:** least median of squares, robust LMS and modified quantile (Synapse's definitions are not clear from the text; my readings gave different numbers), dataset 2 sensitivity ($134 vs 140 to 166 depending on trend and trim), and paired-sales pair counts (Synapse found 237 pairs, my six-feature rule found 85; Synapse matches on about 25 features).
