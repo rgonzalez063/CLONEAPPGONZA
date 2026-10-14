@@ -1,12 +1,12 @@
 feature,area,priority,original,clone,notes
-Sign in and account,auth,must,yes,no,
+Sign in and account,auth,must,yes,yes,"email and password, sign out everywhere, delete account, password reset script"
 Entry screen: state / MLS / property type / template / effective date / name,session,must,yes,partial,HARMLS SFR only; one template
-Save entry choices as defaults,session,could,yes,no,
-Session autosave on every click and reload,session,must,yes,partial,browser localStorage; Postgres later
-Session management: load / delete / clone / favorite / search,session,must,yes,partial,"list, search, open, delete; no clone or favorite"
+Save entry choices as defaults,session,could,yes,no,a default template per MLS and type exists instead
+Session autosave on every click and reload,session,must,yes,yes,"saved to the database, debounced; header shows saving status"
+Session management: load / delete / clone / favorite / search,session,must,yes,partial,"list, search, open, delete, move old browser sessions; no clone or favorite yet"
 Activity log,session,could,yes,no,
-Templates: create / edit / clone / delete,templates,must,yes,no,
-Create template from current session,templates,should,yes,no,
+Templates: create / edit / clone / delete,templates,must,yes,yes,"create from a session, rename, clone, set default, delete, update from a session"
+Create template from current session,templates,should,yes,yes,Save as template on the results page
 Upload MLS CSV into up to 3 named datasets (drag and drop),data,must,yes,yes,"verified with the real HARMLS export (419 columns, 210 rows)"
 Append more properties to a dataset,data,should,yes,yes,
 Remove all properties from a dataset,data,should,yes,yes,
@@ -50,7 +50,7 @@ Lock Calculations toggle (auto on when Done),results,must,yes,yes,
 Add / remove / reorder features,results,must,yes,partial,add and remove; no reorder
 Compare two features,results,could,yes,no,
 Custom feature from MLS field (numeric / selection / text; AND/OR),results,should,yes,no,
-Save layout to template,results,should,yes,no,
+Save layout to template,results,should,yes,yes,"replace the template a session started from, or save a new one"
 Lot size unit toggle (sqft or acres),results,could,yes,no,
 Prior choices from similar sessions,results,should,yes,no,
 Peer results (anonymous other appraisers),results,skip,yes,no,needs a user network

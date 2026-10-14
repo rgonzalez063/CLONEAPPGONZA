@@ -6,19 +6,20 @@ import { PropertyGrid } from '@/components/PropertyGrid'
 import { Button, TextInput } from '@/components/ui'
 import { COLUMNS, editProperty, revertField, setDeleted, type Column } from '@/lib/propertyOps'
 import type { StoredProperty } from '@/lib/importer'
-import { getSession, saveSession, type Session } from '@/lib/store'
+import { saveSession, type Session } from '@/lib/store'
+import { useSession } from '@/lib/useSession'
 
 export default function PropertiesPage() {
   const { id, slot } = useParams<{ id: string; slot: string }>()
-  const [s, setS] = useState<Session | null | undefined>(undefined)
+  const { s, setS, error, reload } = useSession(id)
   const [query, setQuery] = useState('')
   const [deletedView, setDeletedView] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [note, setNote] = useState('')
-  useEffect(() => { void getSession(id).then(setS) }, [id])
   const dataset = s?.datasets.find((d) => d.slot === Number(slot))
   const rows = useMemo(() => (dataset ? dataset.properties.filter((p) => !!p.deleted === deletedView) : []), [dataset, deletedView])
 
+  if (error) return <div className="p-8"><p role="alert" className="text-danger">{error}</p><Button className="mt-3" onClick={reload}>Try again</Button></div>
   if (s === undefined) return <p className="p-8 text-text-muted">Loading…</p>
   if (!s || !dataset) return <p className="p-8">Dataset not found. <Link className="text-accent" href="/sessions">Back to sessions</Link></p>
   const session = s
@@ -30,7 +31,7 @@ export default function PropertiesPage() {
       datasets: session.datasets.map((d) => (d.slot === ds.slot ? { ...d, properties: fn(d.properties) } : d)),
     }
     setS(next)
-    await saveSession(next)
+    await saveSession(next).catch(() => undefined)
   }
   const editedCount = dataset.properties.filter((p) => p.edits && Object.keys(p.edits).length).length
   const deletedCount = dataset.properties.filter((p) => p.deleted).length

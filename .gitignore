@@ -5,3 +5,8 @@ next-env.d.ts
 
 # real MLS exports used only for local acceptance tests; never commit
 .sample/
+
+# local embedded database
+.data/
+.env
+.env.local

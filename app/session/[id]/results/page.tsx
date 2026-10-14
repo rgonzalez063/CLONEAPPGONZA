@@ -11,7 +11,9 @@ import { defaultCommentOptions } from '@/lib/comments'
 import { computeFeature, defaultWidget, prepareDatasets, subjectValues } from '@/lib/analysis'
 import { defaultTransactional, type TransactionalSettings } from '@/lib/transactional'
 import { FEATURE_ORDER, PLAIN_MENU, FEATURES, compareKey, groupKey, groupMenu, resolveFeature } from '@/lib/features'
-import { getSession, saveSession, type Session, type Subject, type WidgetState } from '@/lib/store'
+import { listTemplates, saveSession, type Session, type Subject, type Template, type WidgetState } from '@/lib/store'
+import { SaveTemplateModal } from '@/components/SaveTemplateModal'
+import { useSession } from '@/lib/useSession'
 
 const blank: Subject = { address: '', zip: '', gla: null, lot_size: null, baths_full: null, baths_half: null, stories: null, garage: null }
 
@@ -115,13 +117,26 @@ function TransactionalPanel({ settings, prepared, onChange }: { settings: Transa
 
 export default function ResultsPage() {
   const { id } = useParams<{ id: string }>()
-  const [s, setS] = useState<Session | null | undefined>(undefined)
+  const { s, setS, error, reload } = useSession(id, (x) => { if (x && !x.subject) setAsking(true) })
   const [asking, setAsking] = useState(false)
   const [adding, setAdding] = useState(false)
-  const [panel, setPanel] = useState<'comments' | 'export' | 'paired' | null>(null)
-  useEffect(() => { void getSession(id).then((x) => { setS(x); if (x && !x.subject) setAsking(true) }) }, [id])
+  const [panel, setPanel] = useState<'comments' | 'export' | 'paired' | 'template' | null>(null)
+  const [templateNote, setTemplateNote] = useState('')
+  const [sourceTemplate, setSourceTemplate] = useState<Template | null>(null)
 
   // Recompute only when data, subject, or modeled/chosen values change (not on slider constraint moves).
+  useEffect(() => {
+    if (!s?.templateId) { setSourceTemplate(null); return }
+    listTemplates(s.mls, s.propertyType).then((l) => setSourceTemplate(l.find((t) => t.id === s.templateId) ?? null)).catch(() => setSourceTemplate(null))
+  }, [s?.templateId, s?.mls, s?.propertyType])
+  // A new session with no saved features starts with the standard four, saved so they stay put.
+  useEffect(() => {
+    if (s && Object.keys(s.widgets).length === 0) {
+      const next = { ...s, widgets: Object.fromEntries(FEATURE_ORDER.map((k) => [k, defaultWidget()])) }
+      setS(next)
+      void saveSession(next).catch(() => undefined)
+    }
+  }, [s, setS])
   const prepKey = s ? JSON.stringify([s.datasets.map((d) => d.properties.length), s.dataVersion ?? 0, s.transactional, s.effectiveDate]) : ''
   const prepared = useMemo(() => (s ? prepareDatasets(s) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,11 +148,12 @@ export default function ResultsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calcKey, prepared])
 
+  if (error) return <div className="p-8"><p role="alert" className="text-danger">{error}</p><Button className="mt-3" onClick={reload}>Try again</Button></div>
   if (s === undefined) return <p className="p-8 text-text-muted">Loading…</p>
   if (s === null) return <p className="p-8">Session not found. <Link className="text-accent" href="/sessions">Back to sessions</Link></p>
   const session = s
-  const save = async (next: Session) => { setS(next); await saveSession(next) }
-  const widgets = { ...Object.fromEntries(FEATURE_ORDER.map((k) => [k, defaultWidget()])), ...session.widgets }
+  const save = async (next: Session) => { setS(next); await saveSession(next).catch(() => undefined) }
+  const widgets = session.widgets
   const patch = (key: string, p: Partial<WidgetState>) => save({ ...session, widgets: { ...widgets, [key]: { ...widgets[key], ...p } } })
   const keys = Object.keys(widgets)
   const sv = subjectValues(session)
@@ -154,10 +170,12 @@ export default function ResultsPage() {
           <Button variant="secondary" onClick={() => setAsking(true)}>Edit subject</Button>
           <Button variant="secondary" onClick={() => setAdding(true)}>Add feature</Button>
           <Button variant="secondary" onClick={() => setPanel('paired')}>Paired sales settings</Button>
+          <Button variant="secondary" onClick={() => setPanel('template')}>Save as template</Button>
           <Button variant="secondary" onClick={() => setPanel('comments')}>View comments</Button>
           <Button onClick={() => setPanel('export')}>Export</Button>
         </div>
       </div>
+      {templateNote && <p role="status" className="mb-2 text-sm text-success">{templateNote}</p>}
       <TransactionalPanel
         settings={session.transactional ?? defaultTransactional}
         prepared={prepared}
@@ -178,6 +196,10 @@ export default function ResultsPage() {
           analysisDate: new Date().toISOString().slice(0, 10),
         }
         const transactional = session.commentTransactional ?? true
+        if (panel === 'template') {
+          return <SaveTemplateModal session={session} current={sourceTemplate} onClose={() => setPanel(null)}
+            onSaved={(t, replaced) => { setPanel(null); setSourceTemplate(t); setTemplateNote(replaced ? `Updated the template "${t.name}".` : `Saved the template "${t.name}".`) }} />
+        }
         if (panel === 'paired') {
           return <PairedSettingsModal value={session.pairedSettings} prepared={prepared} featureKeys={keys}
             featureLabels={Object.fromEntries(keys.map((k) => [k, resolveFeature(k)?.label ?? k]))}

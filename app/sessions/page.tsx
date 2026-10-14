@@ -2,19 +2,33 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Button, TextInput } from '@/components/ui'
-import { deleteSession, listSessions, type Session } from '@/lib/store'
+import { deleteSession, forgetOldBrowserSessions, importOldSession, listSessions, oldBrowserSessions, type SessionSummary } from '@/lib/store'
 
 export default function SessionsPage() {
-  const [items, setItems] = useState<Session[] | null>(null)
+  const [items, setItems] = useState<SessionSummary[] | null>(null)
+  const [error, setError] = useState('')
+  const [old, setOld] = useState(0)
+  const [moving, setMoving] = useState(false)
   const [q, setQ] = useState('')
-  useEffect(() => { void listSessions().then(setItems) }, [])
+  useEffect(() => { listSessions().then(setItems).catch((e: Error) => setError(e.message)); setOld(oldBrowserSessions().length) }, [])
   const shown = useMemo(() => (items ?? []).filter((s) => `${s.name} ${s.mls} ${s.propertyType}`.toLowerCase().includes(q.toLowerCase())), [items, q])
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="mb-4 text-xl font-bold">Sessions</h1>
       <TextInput label="Search by name, MLS or type" value={q} onChange={(e) => setQ(e.target.value)} />
-      {items === null && <p className="mt-6 text-text-muted">Loading…</p>}
+      {error && <p role="alert" className="mt-4 text-danger">{error}</p>}
+      {old > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface p-3" role="status">
+          <span>This browser still holds {old} session{old === 1 ? '' : 's'} from before accounts existed.</span>
+          <Button loading={moving} onClick={async () => {
+            setMoving(true)
+            try { for (const o of oldBrowserSessions()) await importOldSession(o); forgetOldBrowserSessions(); setOld(0); setItems(await listSessions()) }
+            catch (e) { setError(e instanceof Error ? e.message : 'The move failed.') } finally { setMoving(false) }
+          }}>Move them to my account</Button>
+        </div>
+      )}
+      {items === null && !error && <p className="mt-6 text-text-muted">Loading…</p>}
       {items !== null && shown.length === 0 && (
         <p className="mt-6 text-text-muted">{items.length === 0 ? 'No sessions yet. ' : 'No matches. '}<Link className="text-accent" href="/">Start one</Link>.</p>
       )}

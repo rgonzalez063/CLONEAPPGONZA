@@ -6,7 +6,8 @@ import { DropZone } from '@/components/DropZone'
 import { Button } from '@/components/ui'
 import { importCsv } from '@/lib/importer'
 import { syntheticMarket } from '@/lib/seed'
-import { getSession, saveSession, type Dataset, type Session } from '@/lib/store'
+import { saveSession, type Dataset, type Session } from '@/lib/store'
+import { useSession } from '@/lib/useSession'
 import { mean } from '@/engines'
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString()}`
@@ -31,13 +32,13 @@ function Stats({ d }: { d: Dataset }) {
 
 export default function DatasetsPage() {
   const { id } = useParams<{ id: string }>()
-  const [s, setS] = useState<Session | null | undefined>(undefined)
+  const { s, setS, error, reload } = useSession(id)
   const [errors, setErrors] = useState<Record<number, string>>({})
-  useEffect(() => { void getSession(id).then(setS) }, [id])
+  if (error) return <div className="p-8"><p role="alert" className="text-danger">{error}</p><Button className="mt-3" onClick={reload}>Try again</Button></div>
   if (s === undefined) return <p className="p-8 text-text-muted">Loading…</p>
   if (s === null) return <p className="p-8">Session not found. <Link className="text-accent" href="/sessions">Back to sessions</Link></p>
 
-  const update = async (next: Session) => { setS(next); await saveSession(next) }
+  const update = async (next: Session) => { setS(next); await saveSession(next).catch(() => undefined) }
   const setDataset = (slot: number, fn: (d: Dataset) => Dataset) => update({ ...s, datasets: s.datasets.map((d) => (d.slot === slot ? fn(d) : d)) })
 
   async function onFile(slot: number, file: File) {

@@ -9,6 +9,8 @@
 | S04 | Datasets | 2026-10-13 | partial | property grid (S06), data source settings, dataset settings | generic CSV header aliases; needs a real HARMLS export to confirm. "Load sample" is synthetic |
 | S05 | Subject modal | 2026-10-13 | partial | quality, effective age or depreciation percent, basement, half-story fields | |
 | S12 | Paired sales settings | 2026-10-14 | done | saving to templates (no templates yet) | |
+| backend | Accounts, Postgres (PGlite locally, DATABASE_URL for hosted), API, client store over /api | 2026-10-14 | done | email verification, shared rate limiter | see `replica/backend.md` |
+| S03 | Templates (/templates, Save as template) | 2026-10-14 | done | | |
 | S06 | View/modify properties | 2026-10-14 | partial | per-column data source switch, public records mismatch marker | see below |
 | S09 | Results (Lot Size, GLA, Full Bath, Garage) | 2026-10-13 | partial | comments, export, prior choices, reorder, transactional settings, time adjustment, depreciated cost | the dot widget, constraint, snip, value input, Done, Lock, Model all work |
 | design | `/design` primitives page | 2026-10-13 | done | | |
@@ -56,6 +58,13 @@ Acceptance test: `lib/real-sample.test.ts` (skipped when the private exports in 
 - Saved with the session; results recompute on save; the workfile Settings document lists the rules actually used.
 - **Verified with the real dataset 2 in the browser:** default 231 pairs for GLA; lot size 10% gives 308; bedrooms off gives 672; GLA tolerance of 100 sqft gives 291; the paired-sales result moved from $108/$120 to $96/$105 with the looser lot rule and returned exactly after Reset; the value survived a reload. Dataset 1 correctly shows 0 pairs, as Synapse did. Unit and real-sample tests cover the rules (40 tests).
 - Not done: saving these settings into a template (templates are not built yet).
+
+## Backend and templates (2026-10-14)
+- **Database and accounts:** see `replica/backend.md`. Everything the screens save now goes to Postgres through an authenticated API; the old browser-only storage is gone, with a one-click move for sessions found in the browser.
+- **Tests:** 14 server tests run the real SQL on an in-memory Postgres (5,000 sales round trip, edits and deletions preserved, a second user gets nothing back from every read and write, templates, cascade delete), plus tests for password hashing, token storage, expiry and rate limiting. 55 tests in total.
+- **Browser tests against the running app with your real files:** sign up, a short password refused, session saved; a second browser signs in and sees the same session with the same values, settings and 209 sales; a saved template starts a new session with its settings, features and order but no data; a second user gets 404s and empty lists for the first user's session and templates; wrong content type 415, bad JSON 400, invalid date 400; login rate limit trips on the 9th attempt; sign out everywhere ends the other browser's login; after stopping and restarting the server the session, sales, edits and removals are all still there; deleting a session from the list works.
+- Bugs found by those tests and fixed: the database's jsonb type does not keep key order (so feature order was lost; now saved separately); the Next.js bundler broke the local database (drivers are now external); a cached redirect bounced users back to the login page right after signing in (now a full page load); DELETE requests were refused because every change request must be JSON (the client now always sends JSON).
+- Not built: email verification and emailed password reset (reset is a script), a shared rate limiter for multi-instance hosting, merging simultaneous edits from two devices (last write wins).
 
 ## Harder than expected / gaps
 - **Not reproduced:** least median of squares, robust LMS and modified quantile (Synapse's definitions are not clear from the text; my readings gave different numbers), dataset 2 sensitivity ($134 vs 140 to 166 depending on trend and trim), and paired-sales pair counts (Synapse found 237 pairs, my six-feature rule found 85; Synapse matches on about 25 features).
