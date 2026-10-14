@@ -26,7 +26,7 @@ Time adjustment: best-fit trend line by contract date,adjustments,must,yes,parti
 Subject property form,subject,must,yes,partial,no quality or effective age yet
 Quality plus effective age or depreciation percent,subject,should,yes,no,
 Results screen: widget per feature,results,must,yes,partial,"4 features, thin slice"
-Paired sales method with match settings,methods,must,yes,partial,"true pairs; match rules use 6 features, Synapse uses about 25; dataset 2 median $98 matches, pair counts differ"
+Paired sales method with match settings,methods,must,yes,partial,true pairs; default must-match set finds 231 pairs for GLA (Synapse 237); error 74/72 vs 73/72; no settings screen yet
 Grouped data method with group settings (3 analyses),methods,should,yes,partial,"automatic groups around the median, no settings"
 Regression: OLS / Theil-Sen / LAD / LMS / robust / modified quantile,methods,must,yes,partial,"OLS, Theil-Sen, robust OLS, LAD match Synapse on the real sample. LMS, robust LMS, modified quantile not reproduced (formula unclear)"
 Allocation method,methods,could,yes,no,
@@ -64,5 +64,5 @@ Digital workfile folder (all documents plus original CSVs),export,should,yes,no,
 Matched pairs document,export,could,yes,no,large
 Billing and subscription,billing,skip,yes,no,internal tool
 Help center and video library,help,skip,yes,no,
-"Built-in feature catalog: age, bedrooms, half baths, carport, fireplaces, pool, stories, rooms, HOA, style, quality, heating, cooling, exterior, fencing, patios, spa, flood area",results,should,yes,no,menu captured; importer needs more columns; groups use selection options
-Feature groups with options and Compare (two options in one group),results,could,yes,no,options built from the loaded data with property counts and a None option; pick one option or Compare two; split MLS text on commas
+"Built-in feature catalog: age, bedrooms, half baths, carport, fireplaces, pool, stories, rooms, HOA, style, quality, heating, cooling, exterior, fencing, patios, spa, flood area",results,should,yes,partial,"16 single features (age, beds, half baths, carport, fireplaces, rooms, pool, HOA, three garage types, ...) plus 6 groups; no basement, flood, half stories, spa, property design"
+Feature groups with options and Compare (two options in one group),results,could,yes,partial,"Cooling, Heating, Fencing, Patios, Exterior, Energy; pick an option or Compare two; no Common Areas or Pool Type (no source column in the sample export); option labels are our own"

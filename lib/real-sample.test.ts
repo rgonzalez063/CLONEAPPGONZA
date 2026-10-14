@@ -1,8 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { lad, ols, regression, robustOls, sensitivity, theilSen } from '../engines'
-import { FEATURES } from './features'
+import { findPairs, lad, ols, pairedSales, regression, robustOls, sensitivity, theilSen } from '../engines'
+import { ALL_FEATURES, FEATURES, resolveFeature } from './features'
 import { importCsv } from './importer'
 import { applyTransactional, defaultTransactional } from './transactional'
 
@@ -78,6 +78,21 @@ describe.skipIf(!have)('real HARMLS sample session (subject effective 2026-10-09
     const lad2 = lad(x, y)!.slope
     const rols2 = robustOls(x, y)!.slope
     console.log('DS2 GLA LAD', lad2, 'target 156; ROLS', rols2, 'target 145')
+  })
+  it('dataset 2 GLA paired sales: pair count and error close to Synapse (237 pairs, error 73/72)', () => {
+    const props = toProps(applyTransactional(d2raw!.properties, { ...defaultTransactional, timeModel: 'none' }, EFFECTIVE))
+    const n = findPairs(props, FEATURES.gla, ALL_FEATURES).length
+    expect(n).toBeGreaterThanOrEqual(225)
+    expect(n).toBeLessThanOrEqual(245)
+    const res = pairedSales(props, FEATURES.gla, ALL_FEATURES, { removeOutliers: true })
+    expect(Math.abs(res[0].mae! - 73)).toBeLessThan(5)
+    expect(Math.abs(res[1].mae! - 72)).toBeLessThan(5)
+  })
+  it('feature groups count properties like Synapse (cooling: Central 184, None 6 of the dataset)', () => {
+    const props = toProps(t2!)
+    const central = resolveFeature('grp:cooling:Central')!
+    expect(props.filter((p) => central.get(p) === 1).length).toBeGreaterThanOrEqual(180)
+    expect(props.filter((p) => p.values['grp:cooling:None'] === 1).length).toBe(6)
   })
   it('prints the remaining Synapse comparisons for review', () => {
     const p2 = toProps(t2!)

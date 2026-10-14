@@ -28,13 +28,14 @@ function Dot({ shape, x, y, color, r, ring }: { shape: (typeof SHAPES)[number]; 
   return <circle cx={x} cy={y} r={r} {...common} />
 }
 
-export function FeatureWidget({ feature, data, state, onChange, onRemove, subjectValue }: {
+export function FeatureWidget({ feature, data, state, onChange, onRemove, subjectValue, subjectEditable = false }: {
   feature: FeatureDef
   data: DatasetResults[]
   state: WidgetState
   onChange: (patch: Partial<WidgetState>) => void
   onRemove: () => void
   subjectValue: number | null
+  subjectEditable?: boolean
 }) {
   const [table, setTable] = useState(false)
   const W = 400, left = 96, right = 14, rowH = 22, top = 8
@@ -155,7 +156,18 @@ export function FeatureWidget({ feature, data, state, onChange, onRemove, subjec
           </tbody>
         </table>
       )}
-      {subjectValue === null && <p className="text-xs text-text-muted">The subject has no {feature.label} value; sensitivity needs it.</p>}
+      {subjectEditable && (
+        feature.unit === 'yes/no' ? (
+          <label className="flex items-center gap-2 text-xs text-text-muted">
+            <input type="checkbox" checked={subjectValue === 1} onChange={(e) => onChange({ subject: e.target.checked ? 1 : 0 })} /> The subject has this
+          </label>
+        ) : (
+          <label className="flex items-center gap-2 text-xs text-text-muted">The subject&apos;s value
+            <input type="number" className="h-7 w-24 rounded-sm border border-border-input px-2" value={subjectValue ?? ''} onChange={(e) => onChange({ subject: e.target.value === '' ? null : Number(e.target.value) })} />
+          </label>
+        )
+      )}
+      {subjectValue === null && !subjectEditable && <p className="text-xs text-text-muted">The subject has no {feature.label} value; sensitivity needs it.</p>}
     </section>
   )
 }

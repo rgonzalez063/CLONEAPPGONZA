@@ -1,8 +1,7 @@
-import { FEATURES } from './features'
-import { ALL_FEATURES } from './features'
+import { ALL_FEATURES, resolveFeature } from './features'
 import {
   groupedData, modelPrices, pairedSales, regression, sensitivity, median,
-  type MethodResult, type Property,
+  type FeatureDef, type MethodResult, type Property,
 } from '@/engines'
 import type { Session, WidgetState } from './store'
 import { applyTransactional, defaultTransactional, type TransactionalReport } from './transactional'
@@ -28,19 +27,33 @@ export function prepareDatasets(session: Session): PreparedDataset[] {
 function modeled(session: Session, exceptKey: string) {
   return Object.entries(session.widgets)
     .filter(([k, w]) => k !== exceptKey && w.model && w.chosen !== null)
-    .map(([k, w]) => ({ feature: FEATURES[k], rate: w.chosen as number }))
+    .map(([k, w]) => ({ feature: resolveFeature(k) as FeatureDef, rate: w.chosen as number }))
     .filter((x) => x.feature)
 }
 
+const SUBJECT_FIELDS: Record<string, keyof NonNullable<Session['subject']>> = {
+  gla: 'gla', lot_size: 'lot_size', baths_full: 'baths_full', baths_half: 'baths_half', garage: 'garage', stories: 'stories',
+}
+
+/** The subject's value for a feature: from the subject form when it has the field, else the widget's own value. */
+export function subjectValue(session: Session, key: string): number | null {
+  const field = SUBJECT_FIELDS[key]
+  if (field && session.subject) return (session.subject[field] as number | null) ?? null
+  const w = session.widgets[key]
+  if (w && w.subject !== undefined) return w.subject
+  return key.startsWith('grp:') ? 1 : null // a group option: assume the subject has it until told otherwise
+}
+
 export function subjectValues(session: Session): Record<string, number | null> {
-  const s = session.subject
-  if (!s) return {}
-  return { gla: s.gla, lot_size: s.lot_size, baths_full: s.baths_full, garage: s.garage, stories: s.stories }
+  const out: Record<string, number | null> = {}
+  for (const k of [...Object.keys(SUBJECT_FIELDS), ...Object.keys(session.widgets)]) out[k] = subjectValue(session, k)
+  return out
 }
 
 /** Run every method for one feature on every dataset that has data. */
 export function computeFeature(session: Session, key: string, prepared: PreparedDataset[]): DatasetResults[] {
-  const feature = FEATURES[key]
+  const feature = resolveFeature(key)
+  if (!feature) return []
   const subj = subjectValues(session)
   const sv = subj[key]
   const decided = modeled(session, key)
@@ -53,9 +66,13 @@ export function computeFeature(session: Session, key: string, prepared: Prepared
       if (values.length >= 3) {
         const med = median(values)
         const spread = Math.max(1, med * 0.1)
+        // Yes/no features compare "has it" (1) against "does not" (0); numbers use groups around the median.
+        const binary = feature.unit === 'yes/no'
+        const g1 = binary ? { from: 0, to: 0 } : { from: Math.min(...values), to: med - spread / 2 }
+        const g2 = binary ? { from: 1, to: 1 } : { from: med + spread / 2, to: Math.max(...values) }
         results.push(
-          groupedData(props, feature, { from: Math.min(...values), to: med - spread / 2 }, { from: med + spread / 2, to: Math.max(...values) }, 'avg'),
-          groupedData(props, feature, { from: Math.min(...values), to: med - spread / 2 }, { from: med + spread / 2, to: Math.max(...values) }, 'median'),
+          groupedData(props, feature, g1, g2, 'avg'),
+          groupedData(props, feature, g1, g2, 'median'),
           ...pairedSales(props, feature, ALL_FEATURES, { removeOutliers: true }),
           ...regression(props, feature),
         )

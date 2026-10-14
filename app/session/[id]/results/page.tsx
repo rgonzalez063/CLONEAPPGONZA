@@ -6,7 +6,7 @@ import { FeatureWidget } from '@/components/FeatureWidget'
 import { Button, Modal, TextInput } from '@/components/ui'
 import { computeFeature, defaultWidget, prepareDatasets, subjectValues } from '@/lib/analysis'
 import { defaultTransactional, type TransactionalSettings } from '@/lib/transactional'
-import { FEATURES, FEATURE_ORDER } from '@/lib/features'
+import { FEATURE_ORDER, PLAIN_MENU, FEATURES, compareKey, groupKey, groupMenu, resolveFeature } from '@/lib/features'
 import { getSession, saveSession, type Session, type Subject, type WidgetState } from '@/lib/store'
 
 const blank: Subject = { address: '', zip: '', gla: null, lot_size: null, baths_full: null, baths_half: null, stories: null, garage: null }
@@ -28,6 +28,46 @@ function SubjectModal({ initial, onDone, onCancel }: { initial: Subject; onDone:
         <TextInput label="Baths: half" type="number" {...num('baths_half')} />
         <TextInput label="Stories" type="number" {...num('stories')} />
         <TextInput label="Garage spaces" type="number" {...num('garage')} />
+      </div>
+    </Modal>
+  )
+}
+
+function AddFeatureModal({ existing, onAdd, onClose }: { existing: string[]; onAdd: (key: string) => void; onClose: () => void }) {
+  const groups = groupMenu()
+  const [pick, setPick] = useState('')
+  const [a, setA] = useState('')
+  const [b, setB] = useState('')
+  const group = groups.find((g) => g.id === pick)
+  const plain = PLAIN_MENU.filter((k) => !existing.includes(k))
+  const key = group ? (a && b && a !== b ? compareKey(group.id, a, b) : a && !b ? groupKey(group.id, a) : '') : pick
+  const valid = key && resolveFeature(key) && !existing.includes(key)
+  return (
+    <Modal title="Add a feature" onClose={onClose}
+      footer={<><Button variant="danger" onClick={onClose}>Cancel</Button><Button disabled={!valid} onClick={() => onAdd(key)}>Add</Button></>}>
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-1 text-xs text-text-muted">Feature
+          <select className="h-10 rounded-md border border-border-input px-3 text-sm text-text" value={pick} onChange={(e) => { setPick(e.target.value); setA(''); setB('') }}>
+            <option value="">Choose a feature…</option>
+            <optgroup label="Single features">{plain.map((k) => <option key={k} value={k}>{FEATURES[k].label}</option>)}</optgroup>
+            <optgroup label="Groups of options">{groups.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}</optgroup>
+          </select>
+        </label>
+        {group && (
+          <>
+            <label className="flex flex-col gap-1 text-xs text-text-muted">Option
+              <select className="h-10 rounded-md border border-border-input px-3 text-sm text-text" value={a} onChange={(e) => setA(e.target.value)}>
+                <option value="">Choose an option…</option>{group.options.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-text-muted">Compare with (optional)
+              <select className="h-10 rounded-md border border-border-input px-3 text-sm text-text" value={b} onChange={(e) => setB(e.target.value)}>
+                <option value="">Nothing: has it or not</option>{group.options.filter((o) => o !== a).map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </label>
+          </>
+        )}
+        <p className="text-xs text-text-muted">The results table shows how many properties each method could use. An option that few properties have cannot give a result.</p>
       </div>
     </Modal>
   )
@@ -73,6 +113,7 @@ export default function ResultsPage() {
   const { id } = useParams<{ id: string }>()
   const [s, setS] = useState<Session | null | undefined>(undefined)
   const [asking, setAsking] = useState(false)
+  const [adding, setAdding] = useState(false)
   useEffect(() => { void getSession(id).then((x) => { setS(x); if (x && !x.subject) setAsking(true) }) }, [id])
 
   // Recompute only when data, subject, or modeled/chosen values change (not on slider constraint moves).
@@ -80,7 +121,7 @@ export default function ResultsPage() {
   const prepared = useMemo(() => (s ? prepareDatasets(s) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [prepKey])
-  const calcKey = s ? JSON.stringify([prepKey, s.subject, Object.entries(s.widgets).map(([k, w]) => [k, w.model ? w.chosen : null])]) : ''
+  const calcKey = s ? JSON.stringify([prepKey, s.subject, Object.entries(s.widgets).map(([k, w]) => [k, w.model ? w.chosen : null, w.subject])]) : ''
   const computed = useMemo(() => {
     if (!s?.subject) return {}
     return Object.fromEntries(Object.keys(s.widgets).map((k) => [k, computeFeature(s, k, prepared)]))
@@ -95,7 +136,6 @@ export default function ResultsPage() {
   const patch = (key: string, p: Partial<WidgetState>) => save({ ...session, widgets: { ...widgets, [key]: { ...widgets[key], ...p } } })
   const keys = Object.keys(widgets)
   const sv = subjectValues(session)
-  const addable = Object.keys(FEATURES).filter((k) => !keys.includes(k))
 
   return (
     <div className="px-4 py-6" style={{ maxWidth: 1760, margin: '0 auto' }}>
@@ -107,13 +147,7 @@ export default function ResultsPage() {
         <div className="flex flex-wrap gap-2">
           <Link className="rounded-md border border-border-input px-3 py-2 text-sm" href={`/session/${session.id}/datasets`}>Datasets</Link>
           <Button variant="secondary" onClick={() => setAsking(true)}>Edit subject</Button>
-          {addable.length > 0 && (
-            <select aria-label="Add a feature" className="h-10 rounded-md border border-border-input px-2" value=""
-              onChange={(e) => { if (e.target.value) void patch(e.target.value, defaultWidget()) }}>
-              <option value="">Add feature…</option>
-              {addable.map((k) => <option key={k} value={k}>{FEATURES[k].label}</option>)}
-            </select>
-          )}
+          <Button variant="secondary" onClick={() => setAdding(true)}>Add feature</Button>
         </div>
       </div>
       <TransactionalPanel
@@ -123,11 +157,16 @@ export default function ResultsPage() {
       />
       <div className="grid gap-3 rounded-md bg-workspace p-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(400px, 100%), 1fr))' }}>
         {keys.map((k) => (
-          <FeatureWidget key={k} feature={FEATURES[k]} data={computed[k] ?? []} state={widgets[k]} subjectValue={sv[k] ?? null}
+          <FeatureWidget key={k} feature={resolveFeature(k) ?? FEATURES.gla} data={computed[k] ?? []} state={widgets[k]} subjectValue={sv[k] ?? null}
+            subjectEditable={!(k in FEATURES && ['gla', 'lot_size', 'baths_full', 'baths_half', 'garage', 'stories'].includes(k))}
             onChange={(p) => void patch(k, p)}
             onRemove={() => { const { [k]: _gone, ...rest } = widgets; void save({ ...session, widgets: rest }) }} />
         ))}
       </div>
+      {adding && (
+        <AddFeatureModal existing={keys} onClose={() => setAdding(false)}
+          onAdd={(key) => { setAdding(false); void patch(key, defaultWidget()) }} />
+      )}
       {asking && (
         <SubjectModal initial={session.subject ?? blank}
           onCancel={() => setAsking(false)}

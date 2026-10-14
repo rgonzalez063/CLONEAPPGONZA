@@ -30,6 +30,7 @@ export interface WidgetState {
   chosen: number | null; done: boolean; locked: boolean; model: boolean
   low: number | null; high: number | null // constraint (null = unconstrained)
   snip?: boolean
+  subject?: number | null // subject's value for features not in the subject form (default: has it)
 }
 
 const KEY = 'asup.sessions.v1'

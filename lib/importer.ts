@@ -1,4 +1,5 @@
 import { parseCsv } from './csv'
+import { groupFlags } from './groups'
 
 export interface StoredProperty {
   id: string // MLS number
@@ -8,6 +9,7 @@ export interface StoredProperty {
   status: string
   values: Record<string, number | null>
   meta?: { concessions: number; financing: string; special: string; ownership: string }
+  text?: Record<string, string> // source text columns used by feature groups
   deleted?: boolean
 }
 
@@ -34,6 +36,17 @@ const ALIASES: Record<string, string[]> = {
   financing: ['soldterms'],
   special: ['specialconditions'],
   ownership: ['ownership', 'propertyrights'],
+  year_built: ['yearbuilt'],
+  fireplaces: ['fireplacesnumber'],
+  rooms: ['roomcount', 'totalrooms'],
+  hoa: ['maintenancefeeyesno', 'hoamandatory'],
+  garage_desc: ['garagedesc'],
+  style: ['style'],
+  water_sewer: ['watersewer'],
+  cool: ['coolsystem'],
+  heat: ['heatsystem'],
+  exterior: ['exterior'],
+  energy: ['energy'],
 }
 const REQUIRED = ['id', 'salePrice', 'saleDate', 'gla']
 
@@ -91,10 +104,29 @@ export function importCsv(text: string, effectiveDate: string): ImportResult {
     seen.add(id)
     const values: Record<string, number | null> = {}
     for (const k of ['gla', 'lot_size', 'baths_full', 'baths_half', 'garage', 'carport', 'stories', 'beds']) values[k] = toNumber(get(k))
-    const pool = (get('pool') ?? '').trim().toLowerCase()
-    values.pool = pool === 'true' ? 1 : pool === 'false' ? 0 : null
+    // A blank count field in the MLS means none, not unknown.
+    for (const k of ['baths_half', 'carport']) if (values[k] === null) values[k] = 0
+    values.fireplaces = toNumber(get('fireplaces')) ?? 0
+    values.rooms = toNumber(get('rooms'))
+    const yb = toNumber(get('year_built'))
+    values.age = yb ? Number(effectiveDate.slice(0, 4)) - yb : null
+    const yesNo = (v: string | undefined) => { const t = (v ?? '').trim().toLowerCase(); return t === 'true' || t === 'yes' ? 1 : t === 'false' || t === 'no' ? 0 : null }
+    values.pool = yesNo(get('pool'))
+    values.hoa = yesNo(get('hoa'))
+    const gd = get('garage_desc') ?? ''
+    values.garage_attached = /attached/i.test(gd) && !/^attached\/detached/i.test(gd) ? 1 : /attached\/detached/i.test(gd) ? 1 : 0
+    values.garage_detached = /detached/i.test(gd) ? 1 : 0
+    values.garage_builtin = /built-?in/i.test(gd) ? 1 : 0
+    const code = (t: string | undefined) => { const v = (t ?? '').trim(); if (!v) return null; let h = 7; for (const c of v.toLowerCase()) h = (h * 31 + c.charCodeAt(0)) % 1000003; return h }
+    values.style_code = code(get('style'))
+    const ws = (get('water_sewer') ?? '').toLowerCase()
+    values.public_sewer = ws ? (ws.includes('public sewer') ? 1 : 0) : null
+    values.public_water = ws ? (ws.includes('public water') ? 1 : 0) : null
+    const text = { cool: get('cool') ?? '', heat: get('heat') ?? '', exterior: get('exterior') ?? '', energy: get('energy') ?? '' }
+    Object.assign(values, groupFlags(text))
     out.properties.push({
       id, salePrice: price, saleDate, contractDate: toIso(get('contractDate')), status, values,
+      text,
       meta: {
         concessions: toNumber(get('concessions')) ?? 0, financing: (get('financing') ?? '').trim(),
         special: (get('special') ?? '').trim(), ownership: (get('ownership') ?? '').trim(),
