@@ -90,6 +90,20 @@ This second Synapse workfile had no CSVs, only the reports, so it could not chec
 - Exterior options gained Workshop and Detached quarters.
 - **Still not built:** peer adjustments (other appraisers' results; not possible), the "similar prior sessions" panel (could be built from your own past sessions), allocation, and the basement, views, FEMA and external-influence matching (no such columns in the export).
 
+## Checked against the John Rolfe Ln CSVs (2026-10-14)
+The second session came with its CSVs, so every statistic could be compared with the Synapse pages. Result: **the engines now reproduce Synapse to the dollar on this session wherever the data is the same.**
+- **Time trends:** dataset 1 linear `643.9366892776x + 252407.295013687` (exact); dataset 2 fourth-degree polynomial, all five coefficients to 9 digits (`0.0000636214, -0.0535661102, 14.004464134, -1017.949119, 237785.807319`). Polynomial coefficients are now printed in plain powers of x, as Synapse does.
+- **REO:** Synapse dropped one of 42 sales in dataset 2 (41 used). It was MLS 14526062: disclosure "Real Estate Owned", a cash sale. Two sales in the first session with the same disclosure but financed purchases were kept, so the clone calls it REO when the disclosure and a cash sale go together. Guess, shown in the transactional report; the grid can restore a sale.
+- **GLA, every method, both datasets:** OLS, robust OLS, Theil-Sen, LAD, LMS, robust LMS, modified quantile all match (slopes and intercepts); sensitivity $25 / $88 with errors 7,347 / 20,737 (exact); grouped data $60, $118, $168, $180 (exact) with the groups built from dataset 1's median 1574; paired sales find exactly 39 pairs (Synapse 39), $55 / $59 against $51 / $59.
+- **Full bath and half bath, dataset 2:** all methods match to the dollar; garage spaces and workshop and detached quarters give "no result" like Synapse. Year built (calendar year, grouped by age) is a new feature and matches Synapse's paired sales.
+- **Fixed from this check:**
+  - Modified quantile takes percentiles as the midpoint of the two neighbouring sorted values; of 13 definitions, this is the only one that reproduces all six reports checked.
+  - Sensitivity error is measured over every sale (not only the untrimmed ones), and it now searches negative rates too, refining to whole dollars (or cents for small rates), and reports no result when every sale has the same value.
+  - Paired sales' "exterior features" match is the outbuildings group (outdoor kitchen, storage, tennis, workshop, detached quarters), not patios: that is what reproduces both sessions (39 pairs here, 268 against 237 there).
+  - The Disclosures column is now read for REO flags.
+- **Still different:** lot size on dataset 2 (MLS 61962481 has no lot size in the export; Synapse used a value from public records, so enter it in the grid), grouped-data and paired-sales error scores (formulas not reproduced), sensitivity on lot size, half bath and full bath (the surface is flat, Synapse's search range is unknown).
+- **Not used:** the 1004MC export (68 listings of all statuses over 12 months). No Synapse feature reads it; it is the data for a market conditions addendum.
+
 ## Harder than expected / gaps
 - **Not reproduced:** modified quantile on dataset 2 (see below), dataset 2 sensitivity ($134 vs 140 to 166 depending on trend and trim), and paired-sales pair counts (Synapse found 237 pairs, my six-feature rule found 85; Synapse matches on about 25 features).
 - **Dataset 2 time trend:** my best-fit rule picks a 4th-degree polynomial (r² 0.02, essentially flat). Synapse printed no formula for dataset 2, so it probably used none. The log trend is disabled because ln(0) is undefined for the oldest sale.

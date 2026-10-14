@@ -36,6 +36,7 @@ const ALIASES: Record<string, string[]> = {
   concessions: ['sellertobuyerclosingcosts', 'sellerconcessions', 'closingcosts'],
   financing: ['soldterms'],
   special: ['specialconditions'],
+  disclosures: ['disclosures'],
   ownership: ['ownership', 'propertyrights'],
   year_built: ['yearbuilt'],
   fireplaces: ['fireplacesnumber'],
@@ -50,6 +51,17 @@ const ALIASES: Record<string, string[]> = {
   energy: ['energy'],
 }
 const REQUIRED = ['id', 'salePrice', 'saleDate', 'gla']
+
+/**
+ * Special conditions as the transactional filters read them. A disclosure of "Real Estate Owned" with a cash sale counts as REO:
+ * in the two real sessions checked, Synapse dropped the one such sale and kept two with the disclosure but a financed sale.
+ * (Synapse may be reading public records for this; the properties grid can put a dropped sale back.)
+ */
+function specialConditions(special: string | undefined, disclosures: string | undefined, terms: string | undefined): string {
+  const out = (special ?? '').trim()
+  const reo = /real\s+estate\s+owned/i.test(disclosures ?? '') && /cash/i.test(terms ?? '')
+  return reo ? [out, 'REO'].filter(Boolean).join('; ') : out
+}
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 
@@ -111,6 +123,7 @@ export function importCsv(text: string, effectiveDate: string): ImportResult {
     values.rooms = toNumber(get('rooms'))
     const yb = toNumber(get('year_built'))
     values.age = yb ? Number(effectiveDate.slice(0, 4)) - yb : null
+    values.year_built = yb || null
     const yesNo = (v: string | undefined) => { const t = (v ?? '').trim().toLowerCase(); return t === 'true' || t === 'yes' ? 1 : t === 'false' || t === 'no' ? 0 : null }
     values.pool = yesNo(get('pool'))
     values.hoa = yesNo(get('hoa'))
@@ -130,7 +143,8 @@ export function importCsv(text: string, effectiveDate: string): ImportResult {
       text,
       meta: {
         concessions: toNumber(get('concessions')) ?? 0, financing: (get('financing') ?? '').trim(),
-        special: (get('special') ?? '').trim(), ownership: (get('ownership') ?? '').trim(),
+        special: specialConditions(get('special'), get('disclosures'), get('financing')),
+        ownership: (get('ownership') ?? '').trim(),
       },
     })
   }

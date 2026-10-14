@@ -17,6 +17,7 @@ export const FEATURES: Record<string, FeatureDef> = {
   fireplaces: def('fireplaces', 'Fireplace Count', 'each', { type: 'identicalOrBothGreater', n: 0 }),
   rooms: def('rooms', 'Total Rooms', 'each', { type: 'exact' }),
   age: def('age', 'Age', 'years', { type: 'pct', pct: 10 }),
+  year_built: def('year_built', 'Year Built', 'years', { type: 'exact' }),
   pool: def('pool', 'Pool', 'yes/no', { type: 'exact' }),
   hoa: def('hoa', 'HOA Exists', 'yes/no', { type: 'exact' }),
   garage_attached: def('garage_attached', 'Garage: Attached', 'yes/no', { type: 'exact' }),

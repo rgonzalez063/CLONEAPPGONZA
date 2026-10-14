@@ -33,7 +33,7 @@ function solve(A: number[][], b: number[]): number[] | null {
 }
 
 /** Least-squares polynomial fit of the given degree. x is centered and scaled for stability. */
-function polyFit(xs: number[], ys: number[], degree: number): ((x: number) => number) | null {
+function polyFit(xs: number[], ys: number[], degree: number): { predict: (x: number) => number; coefficients: number[] } | null {
   const mx = mean(xs)
   const sx = Math.max(1e-9, Math.sqrt(mean(xs.map((v) => (v - mx) ** 2))))
   const z = xs.map((v) => (v - mx) / sx)
@@ -48,9 +48,13 @@ function polyFit(xs: number[], ys: number[], degree: number): ((x: number) => nu
   }
   const coef = solve(A, b)
   if (!coef) return null
-  return (x) => {
-    const zz = (x - mx) / sx
-    return coef.reduce((acc, c, p) => acc + c * zz ** p, 0)
+  // Expand sum(c_p * ((x - mx) / sx)^p) into plain powers of x, highest power first, as the report prints them.
+  const binom = (n: number, k: number) => { let r = 1; for (let i = 1; i <= k; i++) r = (r * (n - k + i)) / i; return r }
+  const plain = new Array(m).fill(0) // plain[k] multiplies x^k
+  coef.forEach((c, p) => { for (let k = 0; k <= p; k++) plain[k] += (c * binom(p, k) * (-mx) ** (p - k)) / sx ** p })
+  return {
+    predict: (x) => { const zz = (x - mx) / sx; return coef.reduce((acc, c, p) => acc + c * zz ** p, 0) },
+    coefficients: plain.reverse(),
   }
 }
 
@@ -91,7 +95,7 @@ export function fitTrend(xs: number[], ys: number[], model: TrendModel): Trend |
   const degree = Number(model.slice(4))
   const f = polyFit(xs, ys, degree)
   if (!f) return null
-  return { model, coefficients: [], r2: rSquared(ys, xs.map(f)), predict: f }
+  return { model, coefficients: f.coefficients, r2: rSquared(ys, xs.map(f.predict)), predict: f.predict }
 }
 
 /** Best-fitting allowed trend by r-squared. Higher-order models only qualify with enough sales. */

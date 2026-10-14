@@ -129,26 +129,39 @@ export function groupedData(
  */
 export function sensitivity(
   props: Property[], studied: FeatureDef, subjectValue: number,
-  opts: { min: number; max: number; step: number; trimPct?: number },
+  opts: { min: number; max: number; step: number; trimPct?: number; fineStep?: number },
 ): MethodResult {
   const list = usable(props, studied)
   if (list.length < 3) return noResult('SENS', '', 'not enough properties')
+  if (new Set(list.map((p) => val(p, studied))).size === 1) return noResult('SENS', '', 'all properties have the same value')
   const trim = (opts.trimPct ?? 3) / 100
-  let best = { a: NaN, range: Infinity, mae: 0 }
-  const steps = Math.round((opts.max - opts.min) / opts.step)
-  for (let i = 0; i <= steps; i++) {
-    const a = opts.min + i * opts.step
+  const rangeAt = (a: number) => {
     const adj = list.map((p) => p.price + (subjectValue - val(p, studied)!) * a)
-    const lo = quantile(adj, trim)
-    const hi = quantile(adj, 1 - trim)
-    const range = hi - lo
-    if (range < best.range) {
-      const kept = adj.filter((x) => x >= lo && x <= hi)
-      const m = mean(kept)
-      best = { a, range, mae: meanAbs(kept.map((x) => x - m)) }
+    return { adj, range: quantile(adj, 1 - trim) - quantile(adj, trim) }
+  }
+  let bestA = NaN
+  let bestRange = Infinity
+  const scan = (from: number, to: number, step: number) => {
+    const steps = Math.max(1, Math.round((to - from) / step))
+    for (let i = 0; i <= steps; i++) {
+      const a = from + i * step
+      const { range } = rangeAt(a)
+      if (range < bestRange - 1e-9) { bestRange = range; bestA = a }
     }
   }
-  return { method: 'SENS', variant: '', value: best.a, mae: best.mae, status: 'ok', detail: { range: best.range } }
+  // Coarse pass over the whole range, then ever finer passes around the best rate until the final step.
+  let step = opts.step
+  scan(opts.min, opts.max, step)
+  const fine = opts.fineStep ?? step
+  while (step > fine * 1.0000001) {
+    const center = bestA
+    step = Math.max(fine, step / 10)
+    scan(center - step * 10, center + step * 10, step)
+  }
+  bestA = Math.round(bestA / fine) * fine
+  const { adj, range } = rangeAt(bestA)
+  const m = mean(adj) // error is measured over every sale, not just the ones inside the trim
+  return { method: 'SENS', variant: '', value: bestA, mae: meanAbs(adj.map((x) => x - m)), status: 'ok', detail: { range } }
 }
 
 // ------------------------------------------------------------------ regression

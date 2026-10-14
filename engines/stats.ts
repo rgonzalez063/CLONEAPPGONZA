@@ -6,6 +6,16 @@ export function median(xs: number[]): number {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
 }
 
+/**
+ * Percentile the way Synapse's modified quantile regression takes it (the only variant of thirteen that reproduces all six
+ * of its reports checked): the average of the two sorted values on either side of position (n - 1) * q.
+ */
+export function percentileMidpoint(xs: number[], q: number): number {
+  const s = [...xs].sort((a, b) => a - b)
+  const pos = (s.length - 1) * q
+  return (s[Math.floor(pos + 1e-9)] + s[Math.ceil(pos - 1e-9)]) / 2
+}
+
 /** Linear-interpolated quantile, q in [0,1]. */
 export function quantile(xs: number[], q: number): number {
   const s = [...xs].sort((a, b) => a - b)
@@ -134,7 +144,7 @@ export function modifiedQuantile(x: number[], y: number[]) {
   if (sy === 0) return null
   let best: { slope: number; intercept: number; r2: number; percentile: number } | null = null
   for (let p = 10; p <= 90; p += 10) {
-    const cx = quantile(x, p / 100)
+    const cx = percentileMidpoint(x, p / 100)
     let sxx = 0
     let sxy = 0
     for (let i = 0; i < n; i++) { sxx += (x[i] - cx) ** 2; sxy += (x[i] - cx) * (y[i] - cy) }

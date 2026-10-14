@@ -27,7 +27,7 @@ export const CANDIDATES: Candidate[] = [
   c('pool', 'Pool', 'yesno', true, { type: 'exact' }),
   c('carport', 'Carport spaces', 'number', true, { type: 'exact' }),
   c('fireplaces', 'Fireplaces', 'number', true, { type: 'identicalOrBothGreater', n: 0 }),
-  c('ext_sig', 'Exterior features (patios, porches, outbuildings)', 'choice', true, { type: 'exact' }),
+  c('ext_sig', 'Exterior features (outbuildings, outdoor kitchen, tennis)', 'choice', true, { type: 'exact' }),
   c('style_code', 'Style', 'choice', false, { type: 'exact' }),
   c('age', 'Age', 'number', false, { type: 'pct', pct: 10 }),
   c('rooms', 'Total rooms', 'number', false, { type: 'exact' }),

@@ -26,7 +26,7 @@ export interface TransactionalReport {
 
 const dayNumber = (iso: string) => Math.floor(Date.parse(iso + 'T00:00:00Z') / 86400000)
 const NON_CASH = /owner|seller\s*(carry|financ)|carryback/i
-const REO = /\bREO\b|bank[\s-]?owned|foreclos/i
+const REO = /\bREO\b|real\s+estate\s+owned|bank[\s-]?owned|foreclos/i
 const SHORT = /short\s*sale/i
 
 /**

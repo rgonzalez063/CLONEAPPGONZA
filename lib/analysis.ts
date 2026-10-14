@@ -8,9 +8,9 @@ import {
 import type { Session, WidgetState } from './store'
 import { applyTransactional, defaultTransactional, type TransactionalReport } from './transactional'
 
-const EXTERIOR_OPTIONS = GROUPS.filter((g) => g.id === 'patios' || g.id === 'exterior').flatMap((g) => g.options.filter((o) => o.label !== 'None').map((o) => groupKey(g.id, o.label)))
+const EXTERIOR_OPTIONS = GROUPS.filter((g) => g.id === 'exterior').flatMap((g) => g.options.filter((o) => o.label !== 'None').map((o) => groupKey(g.id, o.label)))
 
-/** One number standing for which patio, porch and outbuilding options a property has, so "same exterior features" is an exact match. */
+/** One number standing for which outbuilding options (outdoor kitchen, storage, tennis, workshop, detached quarters) a property has, so "same exterior features" is an exact match. */
 export function exteriorSignature(values: Record<string, number | null>): number {
   let sig = 0
   EXTERIOR_OPTIONS.forEach((k, i) => { if (values[k]) sig += 2 ** i })
@@ -113,6 +113,7 @@ export function computeFeature(session: Session, key: string, prepared: Prepared
   const first = prepared.map(own).find((v) => v.length >= 3)
   const primaryMedian = first ? median(first) : null
   const primaryMin = first ? Math.min(...first) : null
+  const primaryMax = first ? Math.max(...first) : null
   const cost = depreciatedCostResult(session, key)
   return prepared
     .map((d, di) => {
@@ -121,7 +122,12 @@ export function computeFeature(session: Session, key: string, prepared: Prepared
       const values = props.map((p) => feature.get(p)).filter((v): v is number => v !== null)
       const results: MethodResult[] = []
       if (values.length >= 3) {
-        const analyses = groupAnalyses(feature.unit, primaryMedian ?? median(values), primaryMin ?? Math.min(...values))
+        // Year built is analysed as a calendar year but grouped by age, around the median age of the first dataset.
+        const asYear = feature.key === 'year_built'
+        const effYear = Number(session.effectiveDate.slice(0, 4))
+        const toAge = (v: number) => (asYear ? effYear - v : v)
+        const analyses = groupAnalyses(feature.unit, toAge(primaryMedian ?? median(values)), asYear ? effYear - (primaryMax ?? Math.max(...values)) : primaryMin ?? Math.min(...values))
+          .map(([a, b]) => (asYear ? ([{ from: effYear - a.to, to: effYear - a.from }, { from: effYear - b.to, to: effYear - b.from }] as [GroupSpec, GroupSpec]) : [a, b] as [GroupSpec, GroupSpec]))
         const grouped = analyses.flatMap(([g1, g2], n) => [
           { ...groupedData(props, feature, g1, g2, 'avg'), variant: n ? 'avg 2' : 'avg' },
           { ...groupedData(props, feature, g1, g2, 'median'), variant: n ? 'median 2' : 'median' },
@@ -133,8 +139,11 @@ export function computeFeature(session: Session, key: string, prepared: Prepared
           ...regression(props, feature),
         )
         if (sv !== null && sv !== undefined) {
-          const maxRate = Math.max(1, (Math.max(...props.map((p) => p.price)) / Math.max(1e-9, Math.abs(med))) * 3)
-          results.push(sensitivity(props, feature, sv, { min: 0, max: maxRate, step: maxRate / 400, trimPct: 5 }))
+          // Candidate rates run from minus to plus three times a typical rate (price per unit of the feature); whole dollars for
+          // rates in the hundreds or more, cents below that, as Synapse prints them.
+          const typical = median(props.map((p) => p.price)) / Math.max(1e-9, Math.abs(med))
+          const R = Math.max(1, typical * 3)
+          results.push(sensitivity(props, feature, sv, { min: -R, max: R, step: R / 200, fineStep: typical >= 100 ? 1 : 0.01, trimPct: 5 }))
         }
       }
       if (cost && di === 0) results.push(cost)
