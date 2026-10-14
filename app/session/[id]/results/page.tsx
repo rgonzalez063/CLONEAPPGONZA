@@ -8,6 +8,7 @@ import { CommentsModal, ExportModal } from '@/components/ReportModals'
 import { PairedSettingsModal } from '@/components/PairedSettingsModal'
 import type { ReportInput } from '@/lib/documents'
 import { defaultCommentOptions } from '@/lib/comments'
+import { CONDITIONS, CONDITION_AGE, QUALITIES, QUALITY_LIFESPAN, depreciatedCostByCondition } from '@/engines'
 import { computeFeature, defaultWidget, prepareDatasets, subjectValues } from '@/lib/analysis'
 import { defaultTransactional, type TransactionalSettings } from '@/lib/transactional'
 import { FEATURE_ORDER, PLAIN_MENU, FEATURES, compareKey, groupKey, groupMenu, resolveFeature } from '@/lib/features'
@@ -34,6 +35,24 @@ function SubjectModal({ initial, onDone, onCancel }: { initial: Subject; onDone:
         <TextInput label="Baths: half" type="number" {...num('baths_half')} />
         <TextInput label="Stories" type="number" {...num('stories')} />
         <TextInput label="Garage spaces" type="number" {...num('garage')} />
+        <details className="sm:col-span-2" open={!!(v.quality || v.condition || v.costPerSqft)}>
+          <summary className="cursor-pointer font-medium">Quality, condition and cost (for depreciated cost)</summary>
+          <p className="mt-1 text-xs text-text-muted">Optional. Quality sets how long the house lasts; condition sets its effective age. Cost per square foot is your own figure: no cost data comes with the app.</p>
+          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-sm font-medium">UAD quality
+              <select className="h-10 rounded-sm border border-border-input bg-surface px-2" value={v.quality ?? ''} onChange={(e) => setV({ ...v, quality: e.target.value || null })}>
+                <option value="">Not set (70 year life)</option>{QUALITIES.map((q) => <option key={q} value={q}>{q} ({QUALITY_LIFESPAN[q]} year life)</option>)}
+              </select></label>
+            <label className="flex flex-col gap-1 text-sm font-medium">UAD condition
+              <select className="h-10 rounded-sm border border-border-input bg-surface px-2" value={v.condition ?? ''} onChange={(e) => setV({ ...v, condition: e.target.value || null })}>
+                <option value="">Not set</option>{CONDITIONS.map((c) => <option key={c} value={c}>{c} (effective age {CONDITION_AGE[c]})</option>)}
+              </select></label>
+            <TextInput label="Effective age override (years)" type="number" {...num('effectiveAge')} />
+            <TextInput label="Cost per sqft at the subject's size ($)" type="number" {...num('costPerSqft')} />
+            <TextInput label="Change in cost per sqft for each 15% larger ($)" type="number" {...num('costChangePerStep')} />
+            <TextInput label="Kitchen share of cost (%)" type="number" {...num('kitchenPct')} />
+          </div>
+        </details>
       </div>
     </Modal>
   )
@@ -120,7 +139,7 @@ export default function ResultsPage() {
   const { s, setS, error, reload } = useSession(id, (x) => { if (x && !x.subject) setAsking(true) })
   const [asking, setAsking] = useState(false)
   const [adding, setAdding] = useState(false)
-  const [panel, setPanel] = useState<'comments' | 'export' | 'paired' | 'template' | null>(null)
+  const [panel, setPanel] = useState<'comments' | 'export' | 'paired' | 'template' | 'condition' | null>(null)
   const [templateNote, setTemplateNote] = useState('')
   const [sourceTemplate, setSourceTemplate] = useState<Template | null>(null)
 
@@ -171,6 +190,7 @@ export default function ResultsPage() {
           <Button variant="secondary" onClick={() => setAsking(true)}>Edit subject</Button>
           <Button variant="secondary" onClick={() => setAdding(true)}>Add feature</Button>
           <Button variant="secondary" onClick={() => setPanel('paired')}>Paired sales settings</Button>
+          <Button variant="secondary" onClick={() => setPanel('condition')}>Condition cost</Button>
           <Button variant="secondary" onClick={() => setPanel('template')}>Save as template</Button>
           <Button variant="secondary" onClick={() => setPanel('comments')}>View comments</Button>
           <Button onClick={() => setPanel('export')}>Export</Button>
@@ -200,6 +220,26 @@ export default function ResultsPage() {
         if (panel === 'template') {
           return <SaveTemplateModal session={session} current={sourceTemplate} onClose={() => setPanel(null)}
             onSaved={(t, replaced) => { void logEvent(session.id, replaced ? 'template.updated' : 'template.saved', { name: t.name }); setPanel(null); setSourceTemplate(t); setTemplateNote(replaced ? `Updated the template "${t.name}".` : `Saved the template "${t.name}".`) }} />
+        }
+        if (panel === 'condition') {
+          const sj = session.subject
+          const table = sj?.gla && sj.costPerSqft ? depreciatedCostByCondition(sj.costPerSqft, sj.gla, QUALITY_LIFESPAN[sj.quality ?? ''] ?? 70) : null
+          const usd = (v: number) => `$${Math.round(v).toLocaleString('en-US')}`
+          return (
+            <Modal title="Condition: depreciated cost" onClose={() => setPanel(null)} footer={<Button onClick={() => setPanel(null)}>Close</Button>}>
+              {!table ? <p>Enter the subject's GLA and a cost per square foot (Edit subject, Quality, condition and cost) to see this.</p> : (
+                <>
+                  <p className="mb-2 text-sm text-text-muted">Cost to build ${sj!.costPerSqft!.toFixed(2)}/sqft × {sj!.gla!.toLocaleString('en-US')} sqft = {usd(table.cost)}, worn down by each condition's effective age over a {QUALITY_LIFESPAN[sj!.quality ?? ''] ?? 70} year life.</p>
+                  <table className="w-full text-sm">
+                    <thead><tr className="text-left"><th>Condition</th><th>Effective age</th><th>Remaining</th><th>Depreciated cost</th></tr></thead>
+                    <tbody>{table.rows.map((r) => <tr key={r.condition}><td>{r.condition}</td><td>{r.effectiveAge}</td><td>{(r.remaining * 100).toFixed(2)}%</td><td>{usd(r.depreciated)}</td></tr>)}</tbody>
+                  </table>
+                  <h3 className="mb-1 mt-4 font-semibold">One full step apart</h3>
+                  <ul className="text-sm">{table.steps.map((s) => <li key={s.from + s.to}>{s.from} to {s.to}: {usd(s.value)}</li>)}</ul>
+                </>
+              )}
+            </Modal>
+          )
         }
         if (panel === 'paired') {
           return <PairedSettingsModal value={session.pairedSettings} prepared={prepared} featureKeys={keys}

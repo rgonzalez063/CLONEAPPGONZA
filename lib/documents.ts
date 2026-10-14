@@ -40,8 +40,9 @@ function summaryLines(i: ReportInput): string {
 const CODES: { code: string; match: (r: MethodResult) => boolean; name: string }[] = [
   { code: 'TPS.A', match: (r) => r.method === 'TPS' && r.variant === 'avg', name: 'True paired sales (average)' },
   { code: 'TPS.M', match: (r) => r.method === 'TPS' && r.variant === 'median', name: 'True paired sales (median)' },
-  { code: 'GD.A', match: (r) => r.method === 'GD' && r.variant === 'avg', name: 'Grouped data (average)' },
-  { code: 'GD.M', match: (r) => r.method === 'GD' && r.variant === 'median', name: 'Grouped data (median)' },
+  { code: 'GD.A', match: (r) => r.method === 'GD' && r.variant.startsWith('avg'), name: 'Grouped data (average)' },
+  { code: 'GD.M', match: (r) => r.method === 'GD' && r.variant.startsWith('median'), name: 'Grouped data (median)' },
+  { code: 'COST', match: (r) => r.method === 'DC', name: 'Depreciated cost' },
   { code: 'SENS', match: (r) => r.method === 'SENS', name: 'Sensitivity' },
   { code: 'OLS', match: (r) => r.method === 'OLS', name: 'Ordinary least squares regression' },
   { code: 'ROLS', match: (r) => r.method === 'ROLS', name: 'Robust ordinary least squares' },
@@ -66,10 +67,10 @@ export function buildSummary(i: ReportInput): Block[] {
     const data = i.results[k] ?? []
     const used = CODES.filter((c) => data.some((d) => d.results.some((r) => c.match(r) && r.status === 'ok')))
     const rows = data.map((d) => [d.name, ...used.map((c) => {
-      const r = d.results.find((x) => c.match(x) && x.status === 'ok' && x.value !== null)
-      if (!r) return ''
-      const weighted = relevantResults([{ ...d, results: [r] }], w).length > 0
-      return `${weighted ? '' : '*'}${money(r.value as number)}`
+      const hits = d.results.filter((x) => c.match(x) && x.status === 'ok' && x.value !== null)
+      if (!hits.length) return ''
+      // Grouped data has two analyses; both values go in one cell.
+      return hits.map((r) => `${relevantResults([{ ...d, results: [r] }], w).length > 0 ? '' : '*'}${money(r.value as number)}`).join(' | ')
     })])
     rows.push(['Chosen', money(w.chosen as number) + perUnit(f.unit), ...used.slice(1).map(() => '')])
     blocks.push({ kind: 'h', text: `${f.label}: ${money(w.chosen as number)}${perUnit(f.unit)}` })
@@ -95,6 +96,7 @@ export function buildComments(i: ReportInput, withTransactional = true): Block[]
 const OVERVIEW: Record<string, string> = {
   TPS: 'Paired sales. Two sales that match on every other feature but differ on the one studied are compared; the price difference divided by the feature difference is a rate. The average and the median over all pairs are reported. Rates beyond 1.5 times the interquartile range are set aside.',
   GD: 'Grouped data. Sales are split into two groups by the studied feature. The difference in group price (average or median) divided by the difference in group feature size is the rate. A group needs at least two sales.',
+  DC: 'Depreciated cost. The cost to build three sizes of house (the kitchen taken out, wear taken off by effective age over life) from your own cost per square foot; the difference per foot between neighbouring sizes, averaged, is the result.',
   SENS: 'Sensitivity. Each candidate rate is applied to every sale, moving its price to the subject. The rate that makes the adjusted prices most alike (smallest range, after trimming the extremes) is the result.',
   OLS: 'Ordinary least squares. The slope of the line through price against the feature, found by minimizing squared errors.',
   ROLS: 'Robust least squares. The same slope formula, centered on medians instead of means, so unusual sales pull it less.',

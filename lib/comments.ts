@@ -9,7 +9,7 @@ export const defaultCommentOptions: CommentOptions = { range: true, methods: tru
 export const METHOD_NAMES: Record<MethodResult['method'], string> = {
   TPS: 'paired sales', GD: 'grouped data', OLS: 'ordinary least squares regression', ROLS: 'robust least squares regression',
   TS: 'Theil-Sen regression', LAD: 'least absolute deviation regression', LMS: 'least median of squares regression',
-  RLMS: 'robust least median of squares regression', MODQ: 'modified quantile regression', SENS: 'sensitivity analysis',
+  RLMS: 'robust least median of squares regression', MODQ: 'modified quantile regression', SENS: 'sensitivity analysis', DC: 'depreciated cost',
 }
 const REGRESSION = new Set(['OLS', 'ROLS', 'TS', 'LAD', 'LMS', 'RLMS', 'MODQ'])
 
@@ -25,7 +25,7 @@ export function methodsPhrase(results: MethodResult[]): string {
   const names: string[] = []
   const methods = new Set(results.map((r) => r.method))
   const reg = [...methods].filter((m) => REGRESSION.has(m))
-  for (const m of ['TPS', 'GD', 'SENS'] as const) if (methods.has(m)) names.push(METHOD_NAMES[m])
+  for (const m of ['DC', 'GD', 'TPS', 'SENS'] as const) if (methods.has(m)) names.push(METHOD_NAMES[m])
   if (reg.length >= 3) names.push(`${reg.length} types of simple regression`)
   else for (const m of reg) names.push(METHOD_NAMES[m as MethodResult['method']])
   return list(names)

@@ -21,7 +21,8 @@ export const GROUPS: GroupDef[] = [
     { label: 'Covered patio or deck', re: /covered patio/i }, { label: 'Patio or deck', re: /(^|,\s*)patio\/deck/i },
     { label: 'Porch', re: /porch/i }, { label: 'Balcony or terrace', re: /balcony|terrace/i }, { label: 'Rooftop deck', re: /rooftop/i }] },
   { id: 'exterior', label: 'Exterior features', source: 'exterior', options: [
-    { label: 'Outdoor kitchen', re: /outdoor kitchen/i }, { label: 'Storage', re: /storage/i }, { label: 'Tennis', re: /tennis/i }] },
+    { label: 'Outdoor kitchen', re: /outdoor kitchen/i }, { label: 'Storage', re: /storage/i }, { label: 'Tennis', re: /tennis/i },
+    { label: 'Workshop', re: /workshop/i }, { label: 'Detached quarters', re: /(guest|detached|separate)\s*(house|quarters|living|dwelling)|casita|mother-in-law/i }] },
   { id: 'energy', label: 'Energy efficient', source: 'energy', options: [
     { label: 'Windows', re: /window/i }, { label: 'High-efficiency HVAC', re: /high-efficiency/i }, { label: 'Programmable thermostat', re: /thermostat/i }] },
 ]

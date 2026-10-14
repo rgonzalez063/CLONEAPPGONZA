@@ -11,7 +11,11 @@ export interface PairedSettings {
 export interface Candidate { key: string; label: string; unit: 'number' | 'yesno' | 'choice'; enabled: boolean; rule: MatchRule }
 const c = (key: string, label: string, unit: Candidate['unit'], enabled: boolean, rule: MatchRule): Candidate => ({ key, label, unit, enabled, rule })
 
-/** Everything paired sales can be told to match on. The defaults reproduce the real HARMLS sample best. */
+/**
+ * Everything paired sales can be told to match on. The defaults follow the list Synapse prints on its settings page,
+ * limited to what a HARMLS export carries; with them the 209-sale sample gives $85 / $99 and errors 73 / 72 for GLA
+ * (Synapse printed $85 / $98 and 73 / 72). Style is off: matching it exactly on the full MLS text cost pairs Synapse found.
+ */
 export const CANDIDATES: Candidate[] = [
   c('gla', 'GLA', 'number', true, { type: 'pct', pct: 5 }),
   c('lot_size', 'Lot size', 'number', true, { type: 'pct', pct: 5 }),
@@ -21,9 +25,10 @@ export const CANDIDATES: Candidate[] = [
   c('stories', 'Stories', 'number', true, { type: 'exact' }),
   c('garage', 'Garage spaces', 'number', true, { type: 'exact' }),
   c('pool', 'Pool', 'yesno', true, { type: 'exact' }),
-  c('style_code', 'Style', 'choice', true, { type: 'exact' }),
-  c('carport', 'Carport spaces', 'number', false, { type: 'exact' }),
-  c('fireplaces', 'Fireplaces', 'number', false, { type: 'identicalOrBothGreater', n: 0 }),
+  c('carport', 'Carport spaces', 'number', true, { type: 'exact' }),
+  c('fireplaces', 'Fireplaces', 'number', true, { type: 'identicalOrBothGreater', n: 0 }),
+  c('ext_sig', 'Exterior features (patios, porches, outbuildings)', 'choice', true, { type: 'exact' }),
+  c('style_code', 'Style', 'choice', false, { type: 'exact' }),
   c('age', 'Age', 'number', false, { type: 'pct', pct: 10 }),
   c('rooms', 'Total rooms', 'number', false, { type: 'exact' }),
   c('hoa', 'HOA exists', 'yesno', false, { type: 'exact' }),

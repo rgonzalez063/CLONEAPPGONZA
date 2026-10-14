@@ -24,7 +24,7 @@ Transactional adjustments in order: rights / financing / distressed / concession
 Time adjustment: best-fit trend line by contract date,adjustments,must,yes,partial,"linear, polynomial 2-4 (10 sales per inflection point); log needs a positive x offset so it is off. Dataset 1 reproduces Synapse exactly"
 "Time adjustment manual choice or ""Type My Own""",adjustments,should,yes,partial,"choice of linear, poly 2-4, none; no type-your-own"
 Subject property form,subject,must,yes,partial,no quality or effective age yet
-Quality plus effective age or depreciation percent,subject,should,yes,no,
+Quality plus effective age or depreciation percent,subject,should,yes,yes,"quality and condition set the life and effective age; cost per sqft is your own figure"
 Results screen: widget per feature,results,must,yes,partial,"4 features, thin slice"
 Paired sales method with match settings,methods,must,yes,yes,"settings screen: 16 features on or off, rule per feature (exact, within %, within units, same or both more than N), outlier trim, live pair counts; default set finds 231 pairs for GLA on the real dataset 2 (Synapse 237), error 74/72 vs 73/72"
 Grouped data method with group settings (3 analyses),methods,should,yes,partial,"automatic groups around the median, no settings"
@@ -35,9 +35,9 @@ Paired sales outlier removal (1.5 x IQR),methods,should,yes,yes,
 Survey method,methods,skip,yes,no,needs a user network
 Standard error of the MAE,methods,could,yes,no,
 Kitchen cost removal and stepping in depreciated cost,methods,could,yes,no,
-UAD quality and condition conversion tables,subject,should,yes,no,
+UAD quality and condition conversion tables,subject,should,yes,yes,"quality and condition set the life and effective age; cost per sqft is your own figure"
 Sensitivity method with trim percent,methods,must,yes,partial,fixed 3% trim
-Depreciated cost with settings,methods,could,yes,no,needs cost data
+Depreciated cost with settings,methods,could,yes,yes,"quality and condition set the life and effective age; cost per sqft is your own figure"
 Error scores and dot sizing,methods,should,yes,no,formula unknown; define own
 Dots color-coded by dataset,results,must,yes,yes,plus shapes
 Exclude icon with hidden-results reasons,results,should,yes,partial,reasons in the results table

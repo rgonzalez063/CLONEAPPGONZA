@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { findPairs, groupedData, pairedSales, regression, sensitivity } from './methods'
 import { modelPrices } from './modeling'
+import { depreciatedCostByCondition, depreciatedCostBySize, QUALITY_LIFESPAN } from './depreciation'
 import { median, medianSquares, modifiedQuantile, ols, theilSen, trimIQR } from './stats'
 import type { FeatureDef, Property } from './types'
 
@@ -118,5 +119,29 @@ describe('least median of squares, robust LMS and modified quantile', () => {
     expect(m.status).toBe('ok')
     expect(m.detail!.percentile).toBeGreaterThanOrEqual(10)
     expect(r.map((v) => v.method)).toEqual(['OLS', 'TS', 'ROLS', 'LAD', 'LMS', 'RLMS', 'MODQ'])
+  })
+})
+
+describe('depreciated cost', () => {
+  // Numbers from a Synapse GLA details page: subject 1,447 sqft, $195.56/sqft (196.41 and 194.71 at the other sizes),
+  // 10.35% kitchen, 15 years of 70 -> steps $170,170 / $199,326 / $228,221, rates $134.36 and $133.16, result $134.
+  it('prices three sizes and averages the two per-foot differences', () => {
+    const r = depreciatedCostBySize({ subjectSize: 1447, costPerSqft: 195.56, costChangePerStep: -0.85, kitchenPct: 10.35, effectiveAge: 15, lifespan: 70 })!
+    expect(r.steps.map((s) => s.size)).toEqual([1230, 1447, 1664])
+    expect(r.steps.map((s) => s.cost)).toEqual([241584, 282975, 323997])
+    expect(r.steps.map((s) => Math.round(s.depreciated))).toEqual([170170, 199326, 228221])
+    expect(r.rates[0]).toBeCloseTo(134.36, 1)
+    expect(r.rates[1]).toBeCloseTo(133.16, 1)
+    expect(Math.round(r.value)).toBe(134)
+  })
+  it('wears a house down by condition exactly as the Synapse table does ($199.55/sqft x 1,447, 70 years)', () => {
+    const r = depreciatedCostByCondition(199.55, 1447, QUALITY_LIFESPAN.Q3)!
+    expect(r.cost).toBe(288749)
+    const at = (c: string) => r.rows.find((x) => x.condition === c)!.depreciated
+    expect(['C1', 'C2+', 'C2', 'C3+', 'C3', 'C4+', 'C4', 'C5+', 'C5', 'C6'].map(at)).toEqual([288749, 284620, 272261, 255745, 230999, 202124, 164991, 123758, 61879, 20617])
+    expect(r.steps.find((s) => s.from === 'C2' && s.to === 'C3')!.value).toBe(272261 - 230999)
+  })
+  it('gives nothing without cost data', () => {
+    expect(depreciatedCostBySize({ subjectSize: 1447, costPerSqft: 0, effectiveAge: 15, lifespan: 70 })).toBeNull()
   })
 })

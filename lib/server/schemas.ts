@@ -23,6 +23,8 @@ export const commentOptions = z.object({ range: z.boolean(), methods: z.boolean(
 export const subject = z.object({
   address: z.string().max(300), zip: z.string().max(20),
   gla: nullNum, lot_size: nullNum, baths_full: nullNum, baths_half: nullNum, stories: nullNum, garage: nullNum,
+  quality: z.string().max(4).nullable().optional(), condition: z.string().max(4).nullable().optional(), effectiveAge: nullNum.optional(),
+  costPerSqft: nullNum.optional(), costChangePerStep: nullNum.optional(), kitchenPct: nullNum.optional(),
 })
 export const widgetState = z.object({
   chosen: nullNum, done: z.boolean(), locked: z.boolean(), model: z.boolean(), low: nullNum, high: nullNum,

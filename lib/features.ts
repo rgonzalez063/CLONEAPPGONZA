@@ -25,12 +25,9 @@ export const FEATURES: Record<string, FeatureDef> = {
 }
 
 /** Features that must match for a pair of sales to count in paired sales (besides the one studied). */
-const MATCH_ONLY: FeatureDef[] = [def('style_code', 'Style', 'choice', { type: 'exact' })]
-// Default must-match set. Checked against the real sample: this set finds 236 pairs for GLA in the
-// 209-sale dataset (Synapse found 237). Carport, fireplace, sewer and water are left out of the
-// default because adding them drops the count well below that. The paired sales settings screen
-// will let the appraiser change this list.
-export const CORE_FEATURES = ['gla', 'lot_size', 'baths_full', 'baths_half', 'garage', 'stories', 'beds', 'pool']
+const MATCH_ONLY: FeatureDef[] = [def('ext_sig', 'Exterior features', 'choice', { type: 'exact' })]
+// Default must-match set (see CANDIDATES in pairedSettings.ts). The paired sales settings screen lets the appraiser change it.
+export const CORE_FEATURES = ['gla', 'lot_size', 'baths_full', 'baths_half', 'garage', 'stories', 'beds', 'pool', 'carport', 'fireplaces']
 export const FEATURE_ORDER = ['lot_size', 'gla', 'baths_full', 'garage']
 export const ALL_FEATURES: FeatureDef[] = [...CORE_FEATURES.map((k) => FEATURES[k]), ...MATCH_ONLY]
 

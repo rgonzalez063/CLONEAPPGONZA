@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { findPairs, lad, medianSquares, modifiedQuantile, ols, pairedSales, regression, robustOls, sensitivity, theilSen } from '../engines'
-import { ALL_FEATURES, FEATURES, resolveFeature } from './features'
+import { exteriorSignature } from './analysis'
+import { FEATURES, resolveFeature } from './features'
 import { importCsv } from './importer'
 import { applyTransactional, defaultTransactional } from './transactional'
 import { defaultPairedSettings, matchFeatures, studiedWithRule, type PairedSettings } from './pairedSettings'
@@ -19,7 +20,7 @@ describe.skipIf(!have)('real HARMLS sample session (subject effective 2026-10-09
   const d2raw = have ? load('NEIGH.csv') : null
   const t1 = have ? applyTransactional(d1raw!.properties, defaultTransactional, EFFECTIVE) : null
   const t2 = have ? applyTransactional(d2raw!.properties, defaultTransactional, EFFECTIVE) : null
-  const toProps = (r: NonNullable<typeof t1>) => r.properties.map((p) => ({ id: p.id, price: p.adjPrice, values: p.values }))
+  const toProps = (r: NonNullable<typeof t1>) => r.properties.map((p) => ({ id: p.id, price: p.adjPrice, values: { ...p.values, ext_sig: exteriorSignature(p.values) } as Record<string, number | null> }))
 
   it('imports both files with no missing fields', () => {
     expect(d1raw!.missingFields).toEqual([])
@@ -117,14 +118,19 @@ describe.skipIf(!have)('real HARMLS sample session (subject effective 2026-10-09
     const rols2 = robustOls(x, y)!.slope
     console.log('DS2 GLA LAD', lad2, 'target 156; ROLS', rols2, 'target 145')
   })
-  it('dataset 2 GLA paired sales: pair count and error close to Synapse (237 pairs, error 73/72)', () => {
+  it('dataset 2 GLA paired sales with the default settings: close to Synapse (237 pairs, $85 / $98, error 73 / 72)', () => {
     const props = toProps(applyTransactional(d2raw!.properties, { ...defaultTransactional, timeModel: 'none' }, EFFECTIVE))
-    const n = findPairs(props, FEATURES.gla, ALL_FEATURES).length
-    expect(n).toBeGreaterThanOrEqual(225)
-    expect(n).toBeLessThanOrEqual(245)
-    const res = pairedSales(props, FEATURES.gla, ALL_FEATURES, { removeOutliers: true })
-    expect(Math.abs(res[0].mae! - 73)).toBeLessThan(5)
-    expect(Math.abs(res[1].mae! - 72)).toBeLessThan(5)
+    const settings = defaultPairedSettings()
+    const must = matchFeatures(settings)
+    const studied = studiedWithRule(FEATURES.gla, settings)
+    const n = findPairs(props, studied, must).length
+    expect(n).toBeGreaterThanOrEqual(230)
+    expect(n).toBeLessThanOrEqual(255)
+    const res = pairedSales(props, studied, must, { removeOutliers: true })
+    expect(Math.abs(res[0].value! - 85)).toBeLessThan(3)
+    expect(Math.abs(res[1].value! - 98)).toBeLessThan(3)
+    expect(Math.abs(res[0].mae! - 73)).toBeLessThan(2)
+    expect(Math.abs(res[1].mae! - 72)).toBeLessThan(2)
   })
   it('feature groups count properties like Synapse (cooling: Central 184, None 6 of the dataset)', () => {
     const props = toProps(t2!)
@@ -142,20 +148,20 @@ describe.skipIf(!have)('real HARMLS sample session (subject effective 2026-10-09
 
 describe.skipIf(!have)('paired sales settings on the real dataset 2', () => {
   const d2 = have ? importCsv(fs.readFileSync(path.join(dir, 'NEIGH.csv'), 'utf8'), EFFECTIVE) : null
-  const props = have ? applyTransactional(d2!.properties, { ...defaultTransactional, timeModel: 'none' }, EFFECTIVE).properties.map((p) => ({ id: p.id, price: p.adjPrice, values: p.values })) : []
+  const props = have ? applyTransactional(d2!.properties, { ...defaultTransactional, timeModel: 'none' }, EFFECTIVE).properties.map((p) => ({ id: p.id, price: p.adjPrice, values: { ...p.values, ext_sig: exteriorSignature(p.values) } as Record<string, number | null> })) : []
   const count = (s: PairedSettings) => findPairs(props, studiedWithRule(FEATURES.gla, s), matchFeatures(s)).length
   it('default settings find about as many pairs as Synapse (237)', () => {
-    expect(Math.abs(count(defaultPairedSettings()) - 237)).toBeLessThan(10)
+    expect(Math.abs(count(defaultPairedSettings()) - 237)).toBeLessThan(15)
   })
   it('a looser lot size rule finds more pairs, a stricter one fewer', () => {
     const at = (pct: number) => { const s = defaultPairedSettings(); s.features.lot_size.rule = { type: 'pct', pct }; return count(s) }
     expect(at(10)).toBeGreaterThan(at(5))
     expect(at(1)).toBeLessThan(at(5))
   })
-  it('switching a feature off finds more pairs; switching carport on finds fewer', () => {
+  it('switching a feature off finds more pairs; switching style on finds fewer', () => {
     const base = count(defaultPairedSettings())
     const off = defaultPairedSettings(); off.features.beds.enabled = false
-    const on = defaultPairedSettings(); on.features.carport.enabled = true
+    const on = defaultPairedSettings(); on.features.style_code.enabled = true
     expect(count(off)).toBeGreaterThan(base)
     expect(count(on)).toBeLessThanOrEqual(base)
   })

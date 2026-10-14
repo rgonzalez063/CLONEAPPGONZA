@@ -9,9 +9,10 @@ const ROWS: { label: string; match: (r: MethodResult) => boolean }[] = [
   { label: 'Paired Sales', match: (r) => r.method === 'TPS' },
   { label: 'Grouped Data', match: (r) => r.method === 'GD' },
   { label: 'Regression', match: (r) => r.method === 'OLS' || r.method === 'TS' || r.method === 'ROLS' || r.method === 'LAD' || r.method === 'LMS' || r.method === 'RLMS' || r.method === 'MODQ' },
+  { label: 'Depreciated Cost', match: (r) => r.method === 'DC' },
   { label: 'Sensitivity', match: (r) => r.method === 'SENS' },
 ]
-const NAMES: Record<string, string> = { TPS: 'Paired sales', GD: 'Grouped data', OLS: 'OLS regression', TS: 'Theil-Sen regression', ROLS: 'Robust OLS regression', LAD: 'Least absolute deviation', LMS: 'Least median of squares', RLMS: 'Robust least median of squares', MODQ: 'Modified quantile regression', SENS: 'Sensitivity' }
+const NAMES: Record<string, string> = { TPS: 'Paired sales', GD: 'Grouped data', OLS: 'OLS regression', TS: 'Theil-Sen regression', ROLS: 'Robust OLS regression', LAD: 'Least absolute deviation', LMS: 'Least median of squares', RLMS: 'Robust least median of squares', MODQ: 'Modified quantile regression', SENS: 'Sensitivity', DC: 'Depreciated cost' }
 const COLORS = ['var(--color-dataset-1)', 'var(--color-dataset-2)', 'var(--color-dataset-3)']
 const SHAPES = ['circle', 'square', 'diamond'] as const
 

@@ -25,6 +25,9 @@ export interface Dataset { slot: number; name: string; properties: StoredPropert
 export interface Subject {
   address: string; zip: string; gla: number | null; lot_size: number | null
   baths_full: number | null; baths_half: number | null; stories: number | null; garage: number | null
+  // For depreciated cost (all optional). The cost per square foot is the appraiser's own figure; no cost data ships with the app.
+  quality?: string | null; condition?: string | null; effectiveAge?: number | null
+  costPerSqft?: number | null; costChangePerStep?: number | null; kitchenPct?: number | null
 }
 export interface WidgetState {
   chosen: number | null; done: boolean; locked: boolean; model: boolean
