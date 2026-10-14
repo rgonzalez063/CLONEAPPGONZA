@@ -45,7 +45,7 @@ Acceptance test: `lib/real-sample.test.ts` (skipped when the private exports in 
 - **Remove and recover:** select rows (or all shown), Remove selected; "View removed" lists them with Recover selected.
 - **Results follow the data:** every edit, removal or recovery bumps a data version, which recomputes the transactional adjustments, time trend and every method.
 - **Workfile:** the Property Information document now lists every sale removed by hand and every value edited, with the original and current value.
-- **Verified in the browser with the real dataset 2:** sorted, searched, removed the two highest sales, edited a GLA to 9,999 with the keyboard, tried invalid input; GLA OLS for dataset 2 moved from $153 to $63 and returned to exactly $153 (error 44,890) after recovering and undoing. No console errors. 36 unit tests pass.
+- **Verified in the browser with the real dataset 2:** sorted, searched, removed the two highest sales, edited a GLA to 9,999 with the keyboard, tried invalid input; GLA OLS for dataset 2 moved from $153 to $63 and returned to exactly $153 (error 44,890) after recovering and undoing. No console errors. 35 unit tests pass.
 - Bug found and fixed while testing: typing into a cell appended to the old value instead of replacing it; the editor now selects the text on open.
 
 ## Harder than expected / gaps
