@@ -19,6 +19,11 @@ ADJUSTMENT SUPPORT: how to run it on your computer
 
 5. To stop the app, close the window that opened when you started it.
 
+UPDATING TO A NEWER VERSION
+- Download the new zip. Open the folder where you already run Adjustment Support, close the app window, then extract the new zip into that same folder and choose "Replace" / "Replace all" for any files it asks about.
+- Your sessions are not touched (they live in the hidden ".data" folder, which the zip does not contain). Then start the app as usual: it notices the new version and sets itself up again (a few minutes once).
+- Before updating, it is wise to copy the ".data" folder somewhere safe.
+
 YOUR DATA
 - Everything you save is in the folder named ".data" inside this folder. Copy it somewhere safe now and then as a backup.
 - To move to a new computer, copy the whole folder, including ".data".

@@ -1,5 +1,5 @@
 @echo off
-rem Starts Adjustment Support on this computer: installs what it needs the first time, then opens http://localhost:3000
+rem Starts Adjustment Support on this computer. Installs and builds the first time, and again whenever this folder holds a newer version.
 cd /d "%~dp0"
 where node >nul 2>nul
 if errorlevel 1 (
@@ -7,15 +7,22 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-if not exist node_modules (
-  echo First run: installing, this takes a few minutes...
+set WANT=unknown
+set HAVE=none
+if exist VERSION set /p WANT=<VERSION
+if exist .app-version set /p HAVE=<.app-version
+set NEEDSETUP=0
+if not exist node_modules set NEEDSETUP=1
+if not exist .next set NEEDSETUP=1
+if not "%WANT%"=="%HAVE%" set NEEDSETUP=1
+if "%NEEDSETUP%"=="1" (
+  echo Setting up version %WANT%, this takes a few minutes the first time...
   call npm install
   if errorlevel 1 ( pause & exit /b 1 )
-)
-if not exist .next (
-  echo Building the app...
+  if exist .next rmdir /s /q .next
   call npm run build
   if errorlevel 1 ( pause & exit /b 1 )
+  echo %WANT%> .app-version
 )
 echo.
 echo Adjustment Support is starting at http://localhost:3000  (close this window to stop it)
