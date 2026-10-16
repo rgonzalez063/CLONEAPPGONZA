@@ -35,6 +35,7 @@ export interface WidgetState {
   snip?: boolean
   comment?: { range: boolean; methods: boolean; extra: string }
   subject?: number | null // subject's value for features not in the subject form (default: has it)
+  allocation?: number | null // percent of each sale price given to this feature, for the allocation method
 }
 
 

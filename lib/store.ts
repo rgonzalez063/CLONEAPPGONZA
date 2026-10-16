@@ -237,6 +237,11 @@ export async function importOldSession(old: Session): Promise<Session> {
 }
 export function forgetOldBrowserSessions() { try { localStorage.removeItem(OLD_KEY) } catch { /* ignore */ } }
 
+// ------------------------------------------------------------------ the user's own earlier choices
+export interface PriorChoice { sessionId: string; name: string; effectiveDate: string; feature: string; value: number; quality: string | null }
+export const priorChoices = async (zip: string, effective: string, excludeId: string) =>
+  (await api<{ priors: PriorChoice[] }>(`/api/priors?${new URLSearchParams({ zip, effective, exclude: excludeId })}`)).priors
+
 // ------------------------------------------------------------------ market files (every listing of every status)
 export interface MarketFile { slot: number; name: string; listings: Listing[]; notes: Record<string, string | boolean | null>; updatedAt: string }
 export const getMarketFiles = async (id: string) => (await api<{ files: MarketFile[] }>(`/api/sessions/${encodeURIComponent(id)}/market`)).files

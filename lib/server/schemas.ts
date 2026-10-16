@@ -28,7 +28,7 @@ export const subject = z.object({
 })
 export const widgetState = z.object({
   chosen: nullNum, done: z.boolean(), locked: z.boolean(), model: z.boolean(), low: nullNum, high: nullNum,
-  snip: z.boolean().optional(), comment: commentOptions.optional(), subject: nullNum.optional(),
+  snip: z.boolean().optional(), comment: commentOptions.optional(), subject: nullNum.optional(), allocation: z.number().min(0).max(100).nullable().optional(),
 })
 export const widgets = z.record(z.string().min(1).max(120), widgetState).refine((w) => Object.keys(w).length <= 80, 'Too many features.')
 

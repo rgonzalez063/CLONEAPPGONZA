@@ -40,8 +40,12 @@ function summaryLines(i: ReportInput): string {
 const CODES: { code: string; match: (r: MethodResult) => boolean; name: string }[] = [
   { code: 'TPS.A', match: (r) => r.method === 'TPS' && r.variant === 'avg', name: 'True paired sales (average)' },
   { code: 'TPS.M', match: (r) => r.method === 'TPS' && r.variant === 'median', name: 'True paired sales (median)' },
+  { code: 'APS.A', match: (r) => r.method === 'APS' && r.variant === 'avg', name: 'Adjusted paired sales (average)' },
+  { code: 'APS.M', match: (r) => r.method === 'APS' && r.variant === 'median', name: 'Adjusted paired sales (median)' },
   { code: 'GD.A', match: (r) => r.method === 'GD' && r.variant.startsWith('avg'), name: 'Grouped data (average)' },
   { code: 'GD.M', match: (r) => r.method === 'GD' && r.variant.startsWith('median'), name: 'Grouped data (median)' },
+  { code: 'ALLOC.A', match: (r) => r.method === 'ALLOC' && r.variant === 'avg', name: 'Allocation (average)' },
+  { code: 'ALLOC.M', match: (r) => r.method === 'ALLOC' && r.variant === 'median', name: 'Allocation (median)' },
   { code: 'COST', match: (r) => r.method === 'DC', name: 'Depreciated cost' },
   { code: 'SENS', match: (r) => r.method === 'SENS', name: 'Sensitivity' },
   { code: 'OLS', match: (r) => r.method === 'OLS', name: 'Ordinary least squares regression' },
@@ -96,6 +100,8 @@ export function buildComments(i: ReportInput, withTransactional = true): Block[]
 const OVERVIEW: Record<string, string> = {
   TPS: 'Paired sales. Two sales that match on every other feature but differ on the one studied are compared; the price difference divided by the feature difference is a rate. The average and the median over all pairs are reported. Rates beyond 1.5 times the interquartile range are set aside.',
   GD: 'Grouped data. Sales are split into two groups by the studied feature. The difference in group price (average or median) divided by the difference in group feature size is the rate. A group needs at least two sales.',
+  ALLOC: 'Allocation. A share of each sale price that you assign to the feature, divided by how much of the feature the sale has; the average and median of those rates are the results.',
+  APS: 'Adjusted paired sales. Like true paired sales, but the sales may also differ on features you have already modeled, since those differences are adjusted out of the prices.',
   DC: 'Depreciated cost. The cost to build three sizes of house (the kitchen taken out, wear taken off by effective age over life) from your own cost per square foot; the difference per foot between neighbouring sizes, averaged, is the result.',
   SENS: 'Sensitivity. Each candidate rate is applied to every sale, moving its price to the subject. The rate that makes the adjusted prices most alike (smallest range, after trimming the extremes) is the result.',
   OLS: 'Ordinary least squares. The slope of the line through price against the feature, found by minimizing squared errors.',

@@ -6,7 +6,7 @@
 export interface GroupDef {
   id: string
   label: string
-  source: 'cool' | 'heat' | 'exterior' | 'energy'
+  source: 'cool' | 'heat' | 'exterior' | 'energy' | 'lotdesc' | 'interior' | 'amenities'
   options: { label: string; re: RegExp }[]
 }
 
@@ -25,6 +25,15 @@ export const GROUPS: GroupDef[] = [
     { label: 'Workshop', re: /workshop/i }, { label: 'Detached quarters', re: /(guest|detached|separate)\s*(house|quarters|living|dwelling)|casita|mother-in-law/i }] },
   { id: 'energy', label: 'Energy efficient', source: 'energy', options: [
     { label: 'Windows', re: /window/i }, { label: 'High-efficiency HVAC', re: /high-efficiency/i }, { label: 'Programmable thermostat', re: /thermostat/i }] },
+  { id: 'lot', label: 'Lot description', source: 'lotdesc', options: [
+    { label: 'Cul-de-sac', re: /cul[\s-]*de[\s-]*sac/i }, { label: 'Corner', re: /corner/i }, { label: 'Wooded', re: /wooded|trees/i },
+    { label: 'Greenbelt', re: /greenbelt/i }, { label: 'Golf course', re: /golf/i }, { label: 'Waterfront', re: /waterfront|lake|canal|pond/i }, { label: 'Ravine or creek', re: /ravine|creek/i }] },
+  { id: 'interior', label: 'Interior features', source: 'interior', options: [
+    { label: 'High or vaulted ceilings', re: /high ceiling|vaulted|cathedral/i }, { label: 'Wet bar', re: /wet bar/i },
+    { label: 'Elevator', re: /elevator/i }, { label: 'Wine storage', re: /wine/i }, { label: 'Crown molding', re: /crown/i }, { label: 'Formal entry', re: /formal entry|foyer/i }] },
+  { id: 'community', label: 'Community amenities', source: 'amenities', options: [
+    { label: 'Community pool', re: /pool/i }, { label: 'Clubhouse', re: /clubhouse/i }, { label: 'Tennis court', re: /tennis/i },
+    { label: 'Playground', re: /playground/i }, { label: 'Park or trails', re: /park|trail|jogging/i }, { label: 'Gated', re: /gated|guard/i }] },
 ]
 
 export const groupKey = (group: string, option: string) => `grp:${group}:${option}`

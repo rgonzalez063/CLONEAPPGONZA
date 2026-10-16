@@ -29,8 +29,8 @@ Results screen: widget per feature,results,must,yes,partial,"4 features, thin sl
 Paired sales method with match settings,methods,must,yes,yes,"settings screen: 16 features on or off, rule per feature (exact, within %, within units, same or both more than N), outlier trim, live pair counts; default set finds 231 pairs for GLA on the real dataset 2 (Synapse 237), error 74/72 vs 73/72"
 Grouped data method with group settings (3 analyses),methods,should,yes,partial,"automatic groups around the median, no settings"
 Regression: OLS / Theil-Sen / LAD / LMS / robust / modified quantile,methods,must,yes,yes,"OLS, Theil-Sen, robust OLS, LAD match Synapse on the real sample. LMS, robust LMS, modified quantile not reproduced (formula unclear)"
-Allocation method,methods,could,yes,no,
-True vs adjusted paired sales,methods,should,yes,partial,true only
+Allocation method,methods,could,yes,yes,"percent of each price given to the feature; set per feature on the widget"
+True vs adjusted paired sales,methods,should,yes,yes,true only
 Paired sales outlier removal (1.5 x IQR),methods,should,yes,yes,
 Survey method,methods,skip,yes,no,needs a user network
 Standard error of the MAE,methods,could,yes,no,
@@ -52,7 +52,7 @@ Compare two features,results,could,yes,no,
 Custom feature from MLS field (numeric / selection / text; AND/OR),results,should,yes,no,
 Save layout to template,results,should,yes,yes,"replace the template a session started from, or save a new one"
 Lot size unit toggle (sqft or acres),results,could,yes,no,
-Prior choices from similar sessions,results,should,yes,no,
+Prior choices from similar sessions,results,should,yes,partial,"your own earlier choices: same zip code, within 12 months, within one quality step; peers from other appraisers are not possible"
 Peer results (anonymous other appraisers),results,skip,yes,no,needs a user network
 Auto-generated comments with per-feature options and Apply to All,export,must,yes,yes,"View comments dialog: include range, include methods, apply to all; wording is our own"
 Custom comment per feature,export,should,yes,yes,
@@ -66,3 +66,6 @@ Billing and subscription,billing,skip,yes,no,internal tool
 Help center and video library,help,skip,yes,no,
 "Built-in feature catalog: age, bedrooms, half baths, carport, fireplaces, pool, stories, rooms, HOA, style, quality, heating, cooling, exterior, fencing, patios, spa, flood area",results,should,yes,partial,"16 single features (age, beds, half baths, carport, fireplaces, rooms, pool, HOA, three garage types, ...) plus 6 groups; no basement, flood, half stories, spa, property design"
 Feature groups with options and Compare (two options in one group),results,could,yes,partial,"Cooling, Heating, Fencing, Patios, Exterior, Energy; pick an option or Compare two; no Common Areas or Pool Type (no source column in the sample export); option labels are our own"
+Market conditions 1004MC table,market,could,no,yes,"added from the ValuLab file: three periods, absorption, months of supply, medians, concessions"
+Seller concession and REO wording,market,could,no,yes,"own wording; copy buttons and in the workfile"
+Monthly trends and market characteristics,market,could,no,yes,"charts and a table; neighborhood price and age ranges"

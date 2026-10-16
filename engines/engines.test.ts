@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { findPairs, groupedData, pairedSales, regression, sensitivity } from './methods'
 import { modelPrices } from './modeling'
 import { depreciatedCostByCondition, depreciatedCostBySize, QUALITY_LIFESPAN } from './depreciation'
+import { allocation } from './methods'
 import { median, medianSquares, modifiedQuantile, ols, theilSen, trimIQR } from './stats'
 import type { FeatureDef, Property } from './types'
 
@@ -145,3 +146,17 @@ describe('depreciated cost', () => {
     expect(depreciatedCostBySize({ subjectSize: 1447, costPerSqft: 0, effectiveAge: 15, lifespan: 70 })).toBeNull()
   })
 })
+
+describe('allocation', () => {
+  it('turns a share of each price into a rate per unit (the Synapse example: $400,000, 3,000 sqft, 35% is about $47)', () => {
+    const props = [prop('a', 400000, { gla: 3000 }), prop('b', 400000, { gla: 3000 }), prop('c', 200000, { gla: 1500 })]
+    const [avg, med] = allocation(props, gla, 35)
+    expect(avg.value).toBeCloseTo(46.667, 2)
+    expect(med.value).toBeCloseTo(46.667, 2)
+    expect(avg.detail).toMatchObject({ pct: 35, n: 3 })
+  })
+  it('gives no result with fewer than two sales that have the feature', () => {
+    expect(allocation([prop('a', 400000, { gla: 3000 })], gla, 35).every((r) => r.status === 'no_result')).toBe(true)
+  })
+})
+

@@ -306,3 +306,23 @@ describe('market files', () => {
   })
 })
 
+describe('prior choices', () => {
+  const widget = (chosen: number | null, done = true) => ({ chosen, done, locked: done, model: false, low: null, high: null })
+  const subject = (zip: string, quality?: string) => ({ address: 'x', zip, gla: 1400, lot_size: 6000, baths_full: 2, baths_half: 0, stories: 1, garage: 1, ...(quality ? { quality } : {}) })
+  it('lists done adjustments from the same zip within a year, from other sessions of the same user only', async () => {
+    const a = await repo.createSession(db, alice, { ...input, name: 'Prior A', effectiveDate: '2026-06-01' })
+    await repo.patchSession(db, alice, a.id, { subject: subject('77449', 'Q3'), widgets: { gla: widget(60), lot_size: widget(null), garage: widget(2000, false) } })
+    const b = await repo.createSession(db, alice, { ...input, name: 'Prior B', effectiveDate: '2024-01-01' }) // too old
+    await repo.patchSession(db, alice, b.id, { subject: subject('77449'), widgets: { gla: widget(99) } })
+    const c = await repo.createSession(db, alice, { ...input, name: 'Prior C', effectiveDate: '2026-07-01' }) // other zip
+    await repo.patchSession(db, alice, c.id, { subject: subject('77033'), widgets: { gla: widget(77) } })
+    const d = await repo.createSession(db, bob, { ...input, name: 'Bob', effectiveDate: '2026-06-01' })
+    await repo.patchSession(db, bob, d.id, { subject: subject('77449'), widgets: { gla: widget(11) } })
+    const cur = await repo.createSession(db, alice, { ...input, name: 'Current', effectiveDate: '2026-10-09' })
+    await repo.patchSession(db, alice, cur.id, { subject: subject('77449'), widgets: { gla: widget(55) } })
+    const got = await repo.listPriorChoices(db, alice, '77449', '2026-10-09', cur.id)
+    expect(got.map((g) => [g.name, g.feature, g.value, g.quality])).toEqual([['Prior A', 'gla', 60, 'Q3']])
+    expect((await repo.listPriorChoices(db, bob, '77449', '2026-10-09', null)).map((g) => g.value)).toEqual([11])
+  })
+})
+

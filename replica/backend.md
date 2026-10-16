@@ -55,3 +55,7 @@ A template keeps: transactional settings, paired sales rules, comment options, t
 ## Activity log
 - `session_events` (migration 002): one row per event, owned by the session and the user, deleted with either. Read and written only through routes that check the session belongs to the signed-in user (`GET/POST /api/sessions/:id/events`, `POST /api/sessions/:id/clone`).
 - Events hold plain values only (names, MLS numbers, amounts); never file contents. Capped at 20,000 per session and 200 per request.
+
+## Market files
+- `market_files` (migration 003): up to two files per session (competing sales and listings; a wider neighborhood file), the listings as compact JSON (up to 10,000 each), and the appraiser's conclusions and wording. Read and written only through routes that check the session belongs to the signed-in user; deleted with the session; copied by a clone.
+- `GET /api/priors`: the signed-in user's own done adjustments in other sessions (same zip, within a year). Never other users'.

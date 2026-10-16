@@ -12,7 +12,7 @@ import { CONDITIONS, CONDITION_AGE, QUALITIES, QUALITY_LIFESPAN, depreciatedCost
 import { computeFeature, defaultWidget, prepareDatasets, subjectValues } from '@/lib/analysis'
 import { defaultTransactional, type TransactionalSettings } from '@/lib/transactional'
 import { FEATURE_ORDER, PLAIN_MENU, FEATURES, compareKey, groupKey, groupMenu, resolveFeature } from '@/lib/features'
-import { listTemplates, logEvent, saveSession, type Session, type Subject, type Template, type WidgetState } from '@/lib/store'
+import { listTemplates, logEvent, priorChoices, saveSession, type PriorChoice, type Session, type Subject, type Template, type WidgetState } from '@/lib/store'
 import { SaveTemplateModal } from '@/components/SaveTemplateModal'
 import { useSession } from '@/lib/useSession'
 
@@ -142,12 +142,19 @@ export default function ResultsPage() {
   const [panel, setPanel] = useState<'comments' | 'export' | 'paired' | 'template' | 'condition' | null>(null)
   const [templateNote, setTemplateNote] = useState('')
   const [sourceTemplate, setSourceTemplate] = useState<Template | null>(null)
+  const [priors, setPriors] = useState<PriorChoice[]>([])
 
   // Recompute only when data, subject, or modeled/chosen values change (not on slider constraint moves).
   useEffect(() => {
     if (!s?.templateId) { setSourceTemplate(null); return }
     listTemplates(s.mls, s.propertyType).then((l) => setSourceTemplate(l.find((t) => t.id === s.templateId) ?? null)).catch(() => setSourceTemplate(null))
   }, [s?.templateId, s?.mls, s?.propertyType])
+  // The user's own earlier choices on properties in the same zip code, within a year (and within half a quality step when both have one).
+  useEffect(() => {
+    const zip = s?.subject?.zip
+    if (!s || !zip) { setPriors([]); return }
+    priorChoices(zip, s.effectiveDate, s.id).then(setPriors).catch(() => setPriors([]))
+  }, [s?.id, s?.subject?.zip, s?.effectiveDate]) // eslint-disable-line react-hooks/exhaustive-deps
   // A new session with no saved features starts with the standard four, saved so they stay put.
   useEffect(() => {
     if (s && Object.keys(s.widgets).length === 0) {
@@ -160,12 +167,16 @@ export default function ResultsPage() {
   const prepared = useMemo(() => (s ? prepareDatasets(s) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [prepKey])
-  const calcKey = s ? JSON.stringify([prepKey, s.pairedSettings, s.subject, Object.entries(s.widgets).map(([k, w]) => [k, w.model ? w.chosen : null, w.subject])]) : ''
+  const calcKey = s ? JSON.stringify([prepKey, s.pairedSettings, s.subject, Object.entries(s.widgets).map(([k, w]) => [k, w.model ? w.chosen : null, w.subject, w.allocation])]) : ''
   const computed = useMemo(() => {
     if (!s?.subject) return {}
     return Object.fromEntries(Object.keys(s.widgets).map((k) => [k, computeFeature(s, k, prepared)]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calcKey, prepared])
+
+  const qIndex = (q: string | null | undefined) => (q ? QUALITIES.indexOf(q) : -1)
+  const priorFor = (k: string) => priors.filter((x) => x.feature === k && (qIndex(x.quality) < 0 || qIndex(s?.subject?.quality) < 0 || Math.abs(qIndex(x.quality) - qIndex(s?.subject?.quality)) <= 1))
+    .map((x) => ({ name: x.name, date: x.effectiveDate, value: x.value }))
 
   if (error) return <div className="p-8"><p role="alert" className="text-danger">{error}</p><Button className="mt-3" onClick={reload}>Try again</Button></div>
   if (s === undefined) return <p className="p-8 text-text-muted">Loading…</p>
@@ -206,6 +217,7 @@ export default function ResultsPage() {
       <div className="grid gap-3 rounded-md bg-workspace p-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(400px, 100%), 1fr))' }}>
         {keys.map((k) => (
           <FeatureWidget key={k} feature={resolveFeature(k) ?? FEATURES.gla} data={computed[k] ?? []} state={widgets[k]} subjectValue={sv[k] ?? null}
+            prior={priorFor(k)}
             subjectEditable={!(k in FEATURES && ['gla', 'lot_size', 'baths_full', 'baths_half', 'garage', 'stories'].includes(k))}
             onChange={(p) => void patch(k, p)}
             onRemove={() => { const { [k]: _gone, ...rest } = widgets; void save({ ...session, widgets: rest }) }} />

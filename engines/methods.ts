@@ -94,6 +94,20 @@ export function pairedSales(
   return results
 }
 
+// ------------------------------------------------------------------ allocation
+
+/**
+ * Allocation: the appraiser says what share of the price belongs to the feature (35% of the price to GLA, say). Each sale's
+ * share divided by its amount of the feature is a rate; the average and the median of those rates are the results.
+ */
+export function allocation(props: Property[], studied: FeatureDef, pct: number): MethodResult[] {
+  const rates = usable(props, studied).filter((p) => val(p, studied)! > 0).map((p) => (p.price * (pct / 100)) / val(p, studied)!)
+  if (rates.length < 2) return ['avg', 'median'].map((v) => noResult('ALLOC', v, 'not enough sales with the feature'))
+  return ([['avg', mean(rates)], ['median', median(rates)]] as const).map(([variant, value]) => ({
+    method: 'ALLOC' as const, variant, value, mae: meanAbs(rates.map((r) => r - value)), status: 'ok' as const, detail: { pct, n: rates.length },
+  }))
+}
+
 // ------------------------------------------------------------------ grouped data
 
 export interface Group { from: number; to: number } // inclusive range of the studied feature

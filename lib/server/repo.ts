@@ -274,3 +274,18 @@ export async function deleteMarketFile(q: Queryable, userId: string, sessionId: 
   const r = await q.query('delete from market_files where session_id = $1 and user_id = $2 and slot = $3 returning slot', [sessionId, userId, slot])
   return r.rows.length > 0
 }
+
+// ------------------------------------------------------------------ the user's own earlier choices
+export interface PriorChoice { sessionId: string; name: string; effectiveDate: string; feature: string; value: number; quality: string | null }
+
+/** Adjustments the user marked done in other sessions: same zip code, effective date within 12 months of the given one. */
+export async function listPriorChoices(q: Queryable, userId: string, zip: string, effective: string, excludeId: string | null): Promise<PriorChoice[]> {
+  const r = await q.query<{ id: string; name: string; effective_date: unknown; key: string; chosen: string; quality: string | null }>(
+    `select s.id, s.name, s.effective_date, w.key, w.value->>'chosen' as chosen, s.subject->>'quality' as quality
+     from sessions s, jsonb_each(s.widgets) as w
+     where s.user_id = $1 and s.subject->>'zip' = $2 and ($4::uuid is null or s.id <> $4::uuid)
+       and s.effective_date between ($3::date - interval '12 months') and ($3::date + interval '12 months')
+       and (w.value->>'done') = 'true' and (w.value->>'chosen') is not null
+     order by s.effective_date desc limit 500`, [userId, zip, effective, excludeId])
+  return r.rows.map((x) => ({ sessionId: x.id, name: x.name, effectiveDate: day(x.effective_date), feature: x.key, value: Number(x.chosen), quality: x.quality }))
+}

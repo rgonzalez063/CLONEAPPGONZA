@@ -1,18 +1,19 @@
 'use client'
 import { useMemo, useState } from 'react'
-import type { FeatureDef, MethodResult } from '@/engines'
+import { mean, median, type FeatureDef, type MethodResult } from '@/engines'
 import type { DatasetResults } from '@/lib/analysis'
 import type { WidgetState } from '@/lib/store'
 import { Toggle } from './ui'
 
 const ROWS: { label: string; match: (r: MethodResult) => boolean }[] = [
-  { label: 'Paired Sales', match: (r) => r.method === 'TPS' },
+  { label: 'Paired Sales', match: (r) => r.method === 'TPS' || r.method === 'APS' },
   { label: 'Grouped Data', match: (r) => r.method === 'GD' },
   { label: 'Regression', match: (r) => r.method === 'OLS' || r.method === 'TS' || r.method === 'ROLS' || r.method === 'LAD' || r.method === 'LMS' || r.method === 'RLMS' || r.method === 'MODQ' },
+  { label: 'Allocation', match: (r) => r.method === 'ALLOC' },
   { label: 'Depreciated Cost', match: (r) => r.method === 'DC' },
   { label: 'Sensitivity', match: (r) => r.method === 'SENS' },
 ]
-const NAMES: Record<string, string> = { TPS: 'Paired sales', GD: 'Grouped data', OLS: 'OLS regression', TS: 'Theil-Sen regression', ROLS: 'Robust OLS regression', LAD: 'Least absolute deviation', LMS: 'Least median of squares', RLMS: 'Robust least median of squares', MODQ: 'Modified quantile regression', SENS: 'Sensitivity', DC: 'Depreciated cost' }
+const NAMES: Record<string, string> = { TPS: 'Paired sales', GD: 'Grouped data', OLS: 'OLS regression', TS: 'Theil-Sen regression', ROLS: 'Robust OLS regression', LAD: 'Least absolute deviation', LMS: 'Least median of squares', RLMS: 'Robust least median of squares', MODQ: 'Modified quantile regression', SENS: 'Sensitivity', DC: 'Depreciated cost', ALLOC: 'Allocation', APS: 'Adjusted paired sales' }
 const COLORS = ['var(--color-dataset-1)', 'var(--color-dataset-2)', 'var(--color-dataset-3)']
 const SHAPES = ['circle', 'square', 'diamond'] as const
 
@@ -29,7 +30,7 @@ function Dot({ shape, x, y, color, r, ring }: { shape: (typeof SHAPES)[number]; 
   return <circle cx={x} cy={y} r={r} {...common} />
 }
 
-export function FeatureWidget({ feature, data, state, onChange, onRemove, subjectValue, subjectEditable = false }: {
+export function FeatureWidget({ feature, data, state, onChange, onRemove, subjectValue, subjectEditable = false, prior = [] }: {
   feature: FeatureDef
   data: DatasetResults[]
   state: WidgetState
@@ -37,6 +38,7 @@ export function FeatureWidget({ feature, data, state, onChange, onRemove, subjec
   onRemove: () => void
   subjectValue: number | null
   subjectEditable?: boolean
+  prior?: { name: string; date: string; value: number }[] // the appraiser's own earlier choices on similar properties
 }) {
   const [table, setTable] = useState(false)
   const W = 400, left = 96, right = 14, rowH = 22, top = 8
@@ -44,7 +46,7 @@ export function FeatureWidget({ feature, data, state, onChange, onRemove, subjec
     () => data.flatMap((d, di) => d.results.filter((r) => r.status === 'ok' && r.value !== null).map((r) => ({ ...r, di, ds: d.name }))),
     [data],
   )
-  const all = flat.map((r) => r.value as number)
+  const all = [...flat.map((r) => r.value as number), ...prior.map((p) => p.value)]
   const dMin = all.length ? Math.min(...all, state.chosen ?? Infinity) : 0
   const dMax = all.length ? Math.max(...all, state.chosen ?? -Infinity) : 1
   const pad = (dMax - dMin || 1) * 0.05
@@ -54,7 +56,9 @@ export function FeatureWidget({ feature, data, state, onChange, onRemove, subjec
   const dom = state.snip ? { lo: low, hi: high } : full
   const x = (v: number) => left + ((v - dom.lo) / (dom.hi - dom.lo || 1)) * (W - left - right)
   const rows = ROWS.filter((row) => flat.some(row.match))
-  const H = top + rows.length * rowH + 40
+  const priorRow = prior.length > 0
+  const nRows = rows.length + (priorRow ? 1 : 0)
+  const H = top + nRows * rowH + 40
   const bestMae = Math.min(...flat.map((r) => r.mae ?? Infinity))
   const chosenOutside = state.chosen !== null && (state.chosen < low || state.chosen > high)
   const excluded = data.flatMap((d) => d.results.filter((r) => r.status !== 'ok').map((r) => ({ ...r, ds: d.name })))
@@ -104,13 +108,25 @@ export function FeatureWidget({ feature, data, state, onChange, onRemove, subjec
                 </g>
               )
             })}
+            {priorRow && (() => {
+              const y = top + rows.length * rowH + rowH / 2
+              return (
+                <g>
+                  <text x={left - 6} y={y + 4} textAnchor="end" fontSize="11" fill="var(--color-text-muted)">Your prior choices</text>
+                  <line x1={left} x2={W - right} y1={y} y2={y} stroke="var(--color-border)" />
+                  {prior.filter((p) => p.value >= dom.lo && p.value <= dom.hi).map((p, k) => (
+                    <g key={k}><title>{`${p.name} (${p.date}): ${fmt(p.value, feature.unit)}`}</title><Dot shape="diamond" x={x(p.value)} y={y} color="var(--color-text-muted)" r={3.5} ring={false} /></g>
+                  ))}
+                </g>
+              )
+            })()}
             {state.chosen !== null && state.chosen >= dom.lo && state.chosen <= dom.hi && (
-              <line x1={x(state.chosen)} x2={x(state.chosen)} y1={top} y2={top + rows.length * rowH} stroke="var(--color-chart-marker)" strokeWidth="2" />
+              <line x1={x(state.chosen)} x2={x(state.chosen)} y1={top} y2={top + nRows * rowH} stroke="var(--color-chart-marker)" strokeWidth="2" />
             )}
-            <line x1={left} x2={W - right} y1={top + rows.length * rowH} y2={top + rows.length * rowH} stroke="var(--color-chart-grid)" />
+            <line x1={left} x2={W - right} y1={top + nRows * rowH} y2={top + nRows * rowH} stroke="var(--color-chart-grid)" />
             {[0, 0.25, 0.5, 0.75, 1].map((t) => {
               const v = dom.lo + t * (dom.hi - dom.lo)
-              return <text key={t} x={x(v)} y={top + rows.length * rowH + 14} textAnchor={t === 0 ? 'start' : t === 1 ? 'end' : 'middle'} fontSize="10" fill="var(--color-text-muted)">{fmt(v, feature.unit)}</text>
+              return <text key={t} x={x(v)} y={top + nRows * rowH + 14} textAnchor={t === 0 ? 'start' : t === 1 ? 'end' : 'middle'} fontSize="10" fill="var(--color-text-muted)">{fmt(v, feature.unit)}</text>
             })}
             {data.map((d, i) => (
               <g key={d.slot} transform={`translate(${left + i * 90}, ${H - 8})`}>
@@ -141,6 +157,11 @@ export function FeatureWidget({ feature, data, state, onChange, onRemove, subjec
         </div>
       </div>
 
+      {prior.length > 0 && (
+        <p className="text-xs text-text-muted" aria-label={`${feature.label} prior choices`}>
+          Your earlier choices nearby (same zip code, within 12 months): median {fmt(median(prior.map((p) => p.value)), feature.unit)}, average {fmt(mean(prior.map((p) => p.value)), feature.unit)} from {prior.length} session{prior.length === 1 ? '' : 's'}.
+        </p>
+      )}
       <button type="button" className="self-start text-xs text-accent" aria-expanded={table} onClick={() => setTable(!table)}>{table ? 'Hide' : 'Show'} results as a table</button>
       {table && (
         <table className="w-full text-xs">
@@ -168,6 +189,10 @@ export function FeatureWidget({ feature, data, state, onChange, onRemove, subjec
           </label>
         )
       )}
+      <label className="flex items-center gap-2 text-xs text-text-muted">Allocation: share of each price given to {feature.label} (%)
+        <input type="number" min={0} max={100} className="h-7 w-20 rounded-sm border border-border-input px-2" aria-label={`${feature.label} allocation percent`}
+          value={state.allocation ?? ''} placeholder="off" onChange={(e) => onChange({ allocation: e.target.value === '' ? null : Math.max(0, Math.min(100, Number(e.target.value))) })} />
+      </label>
       {subjectValue === null && !subjectEditable && <p className="text-xs text-text-muted">The subject has no {feature.label} value; sensitivity needs it.</p>}
     </section>
   )

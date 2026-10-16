@@ -38,3 +38,21 @@ describe('depreciated cost from the subject', () => {
     expect(depreciatedCostResult(base, 'lot_size')).toBeNull()
   })
 })
+
+import { computeFeature } from './analysis'
+import type { PreparedDataset } from './analysis'
+
+describe('adjusted paired sales', () => {
+  // Two pairs that differ in lot size and also in GLA. True pairing needs GLA to match; after GLA is modeled it need not.
+  const mk = (id: string, price: number, gla: number, lot: number) => ({ id, price, values: { gla, lot_size: lot, baths_full: 2, baths_half: 0, beds: 3, stories: 1, garage: 2, pool: 0, carport: 0, fireplaces: 1, ext_sig: 0 } })
+  const prepared = [{ slot: 1, name: 'D1', props: [mk('a', 200000, 1500, 6000), mk('b', 203000, 1800, 8000), mk('c', 201000, 1450, 6100), mk('d', 204000, 1900, 8200)], report: {} as never, excludedAfterEffective: 0 }] as PreparedDataset[]
+  const base = { id: 's', name: 'x', effectiveDate: '2026-10-09', datasets: [], subject: { address: 'a', zip: '', gla: 1600, lot_size: 7000, baths_full: 2, baths_half: 0, stories: 1, garage: 2 } } as unknown as Session
+  const widget = (o: object) => ({ chosen: null, done: false, locked: false, model: false, low: null, high: null, ...o })
+  it('are found only once a feature is modeled, and true pairs stay true', () => {
+    const none = computeFeature({ ...base, widgets: { lot_size: widget({}) } } as Session, 'lot_size', prepared)[0].results
+    expect(none.some((r) => r.method === 'APS')).toBe(false)
+    const modeled = computeFeature({ ...base, widgets: { lot_size: widget({}), gla: widget({ chosen: 50, model: true }) } } as Session, 'lot_size', prepared)[0].results
+    expect(modeled.filter((r) => r.method === 'APS' && r.status === 'ok')).toHaveLength(2)
+    expect(modeled.filter((r) => r.method === 'TPS' && r.status === 'ok')).toHaveLength(0) // no pair also matches on GLA, so there are no true pairs
+  })
+})

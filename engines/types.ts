@@ -23,7 +23,7 @@ export interface Property {
 export type Status = 'ok' | 'no_result' | 'excluded'
 
 export interface MethodResult {
-  method: 'GD' | 'TPS' | 'SENS' | 'OLS' | 'ROLS' | 'TS' | 'LAD' | 'LMS' | 'RLMS' | 'MODQ' | 'DC'
+  method: 'GD' | 'TPS' | 'SENS' | 'OLS' | 'ROLS' | 'TS' | 'LAD' | 'LMS' | 'RLMS' | 'MODQ' | 'DC' | 'ALLOC' | 'APS'
   variant: string // 'avg' | 'median' | ''
   value: number | null
   mae: number | null

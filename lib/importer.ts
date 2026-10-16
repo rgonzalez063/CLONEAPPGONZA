@@ -49,6 +49,9 @@ const ALIASES: Record<string, string[]> = {
   heat: ['heatsystem'],
   exterior: ['exterior'],
   energy: ['energy'],
+  lotdesc: ['lotdescription'],
+  interior: ['interior'],
+  amenities: ['hoaamenities'],
 }
 const REQUIRED = ['id', 'salePrice', 'saleDate', 'gla']
 
@@ -136,7 +139,7 @@ export function importCsv(text: string, effectiveDate: string): ImportResult {
     const ws = (get('water_sewer') ?? '').toLowerCase()
     values.public_sewer = ws ? (ws.includes('public sewer') ? 1 : 0) : null
     values.public_water = ws ? (ws.includes('public water') ? 1 : 0) : null
-    const text = { cool: get('cool') ?? '', heat: get('heat') ?? '', exterior: get('exterior') ?? '', energy: get('energy') ?? '' }
+    const text = { cool: get('cool') ?? '', heat: get('heat') ?? '', exterior: get('exterior') ?? '', energy: get('energy') ?? '', lotdesc: get('lotdesc') ?? '', interior: get('interior') ?? '', amenities: get('amenities') ?? '' }
     Object.assign(values, groupFlags(text))
     out.properties.push({
       id, salePrice: price, saleDate, contractDate: toIso(get('contractDate')), status, values,

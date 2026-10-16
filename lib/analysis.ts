@@ -2,7 +2,7 @@ import { resolveFeature } from './features'
 import { GROUPS, groupKey } from './groups'
 import { matchFeatures, studiedWithRule } from './pairedSettings'
 import {
-  depreciatedCostBySize, groupedData, modelPrices, CONDITION_AGE, QUALITY_LIFESPAN, pairedSales, regression, sensitivity, median,
+  allocation, depreciatedCostBySize, groupedData, modelPrices, CONDITION_AGE, QUALITY_LIFESPAN, pairedSales, regression, sensitivity, median,
   type FeatureDef, type MethodResult, type Property,
 } from '@/engines'
 import type { Session, WidgetState } from './store'
@@ -136,6 +136,10 @@ export function computeFeature(session: Session, key: string, prepared: Prepared
         results.push(
           ...grouped,
           ...pairedSales(props, feature, mustMatch, { removeOutliers: session.pairedSettings?.removeOutliers ?? true }),
+          // Adjusted pairs: the sales may also differ on features already modeled, since those differences are adjusted out of the prices.
+          ...(decided.length
+            ? pairedSales(props, feature, mustMatch.filter((f) => !decided.some((d) => d.feature.key === f.key)), { removeOutliers: session.pairedSettings?.removeOutliers ?? true }).map((r) => ({ ...r, method: 'APS' as const }))
+            : []),
           ...regression(props, feature),
         )
         if (sv !== null && sv !== undefined) {
@@ -146,6 +150,8 @@ export function computeFeature(session: Session, key: string, prepared: Prepared
           results.push(sensitivity(props, feature, sv, { min: -R, max: R, step: R / 200, fineStep: typical >= 100 ? 1 : 0.01, trimPct: 5 }))
         }
       }
+      const pct = session.widgets[key]?.allocation
+      if (pct && pct > 0 && values.length >= 3) results.push(...allocation(props, feature, pct))
       if (cost && di === 0) results.push(cost)
       return { slot: d.slot, name: d.name, count: props.length, results }
     })

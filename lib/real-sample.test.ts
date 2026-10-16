@@ -284,3 +284,16 @@ describe.skipIf(!fs.existsSync(path.resolve(__dirname, '../.sample/john/mc.csv')
   it('flags the one REO closed sale', () => { expect(reoStats(r.listings, '2026-10-09').reo).toBe(1) })
 })
 
+
+describe.skipIf(!haveJ)('lot, interior and community groups on the John Rolfe Ln neighborhood export', () => {
+  const props = importCsv(fs.readFileSync(path.join(path.resolve(__dirname, '../.sample/john'), 'neigh.csv'), 'utf8'), '2026-10-09').properties
+  const count = (k: string) => props.filter((p) => p.values[k] === 1).length
+  it('counts what the MLS text says', () => {
+    expect(count('grp:lot:Cul-de-sac')).toBe(5)
+    expect(count('grp:lot:Corner')).toBe(1)
+    expect(count('grp:lot:Wooded')).toBe(2)
+    expect(count('grp:community:Community pool')).toBe(8)
+    expect(count('grp:community:Clubhouse')).toBe(7)
+    expect(count('grp:interior:High or vaulted ceilings')).toBe(15)
+  })
+})
