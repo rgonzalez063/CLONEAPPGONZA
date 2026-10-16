@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { DropZone } from '@/components/DropZone'
+import { ScanModal } from '@/components/ScanModal'
 import { Button } from '@/components/ui'
 import {
   characteristics, concessionNarrative, concessionStats, marketNarrative, mc1004, monthlySeries, neighborhoodSummary, reoNarrative, reoStats,
@@ -70,6 +71,7 @@ export default function MarketPage() {
   const [tab, setTab] = useState<'mc' | 'trend' | 'chars' | 'hood'>('mc')
   const [note, setNote] = useState<Record<string, string | boolean | null>>({})
   const [copied, setCopied] = useState('')
+  const [scanning, setScanning] = useState<number | null>(null)
 
   const load = useCallback(() => { getMarketFiles(id).then((f) => { setFiles(f); setNote(f.find((x) => x.slot === 1)?.notes ?? {}) }).catch(() => setFiles([])) }, [id])
   useEffect(load, [load])
@@ -150,12 +152,25 @@ export default function MarketPage() {
               <h2 className="mb-1 text-sm font-semibold">{SLOT_NAMES[slot - 1]}</h2>
               {f && <p className="mb-2 text-xs text-text-muted">{f.name || 'file'}: {f.listings.length.toLocaleString('en-US')} listings ({statusCounts(f.listings)})</p>}
               <DropZone hasData={!!f} onFile={(file) => void onFile(slot, file)} error={errors[slot]} />
-              {f && <Button variant="secondary" className="mt-2" onClick={async () => { await deleteMarketFile(id, slot); load() }}>Remove this file</Button>}
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={() => setScanning(slot)}>Scan a document (AI)</Button>
+                {f && <Button variant="secondary" onClick={async () => { await deleteMarketFile(id, slot); load() }}>Remove this file</Button>}
+              </div>
             </section>
           )
         })}
       </div>
       {busy && <p className="mb-3 text-text-muted" role="status">Saving…</p>}
+      {scanning !== null && (
+        <ScanModal target="market" sessionId={id} effectiveDate={eff} onClose={() => setScanning(null)}
+          onApply={async (a) => {
+            if (a.target !== 'market') return
+            const prior = files?.find((f) => f.slot === scanning)?.listings ?? []
+            const known = new Set(prior.map((l) => l.id))
+            await putMarketFile(id, scanning, { name: files?.find((f) => f.slot === scanning)?.name || 'Scanned document', listings: [...prior, ...a.listings.filter((l) => !known.has(l.id))].slice(0, 10000) })
+            load()
+          }} />
+      )}
 
       {!comp ? <p className="text-text-muted">Load the first file to see the 1004MC table.</p> : (
         <>

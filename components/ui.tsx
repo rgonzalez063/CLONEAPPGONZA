@@ -63,7 +63,7 @@ export function Toggle({ label, checked, onChange, disabled }: { label: string; 
   )
 }
 
-export function Modal({ title, onClose, children, footer }: { title: string; onClose: () => void; children: ReactNode; footer: ReactNode }) {
+export function Modal({ title, onClose, children, footer, wide = false }: { title: string; onClose: () => void; children: ReactNode; footer: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null
@@ -74,7 +74,7 @@ export function Modal({ title, onClose, children, footer }: { title: string; onC
   }, [onClose])
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-text/60 p-4" role="presentation">
-      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className="flex max-h-[90vh] w-full max-w-xl flex-col rounded-lg bg-bg shadow-pop">
+      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className={`flex max-h-[90vh] w-full flex-col rounded-lg bg-bg shadow-pop ${wide ? 'max-w-6xl' : 'max-w-xl'}`}>
         <h2 className="px-6 pt-6 text-center text-lg font-semibold">{title}</h2>
         <div className="overflow-y-auto px-6 py-4">{children}</div>
         <div className="flex justify-end gap-2 border-t border-border bg-surface px-6 py-3">{footer}</div>

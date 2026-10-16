@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { DropZone } from '@/components/DropZone'
+import { ScanModal } from '@/components/ScanModal'
 import { Button } from '@/components/ui'
 import { importCsv } from '@/lib/importer'
 import { syntheticMarket } from '@/lib/seed'
@@ -34,6 +35,7 @@ export default function DatasetsPage() {
   const { id } = useParams<{ id: string }>()
   const { s, setS, error, reload } = useSession(id)
   const [errors, setErrors] = useState<Record<number, string>>({})
+  const [scanning, setScanning] = useState<number | null>(null)
   if (error) return <div className="p-8"><p role="alert" className="text-danger">{error}</p><Button className="mt-3" onClick={reload}>Try again</Button></div>
   if (s === undefined) return <p className="p-8 text-text-muted">Loading…</p>
   if (s === null) return <p className="p-8">Session not found. <Link className="text-accent" href="/sessions">Back to sessions</Link></p>
@@ -67,6 +69,7 @@ export default function DatasetsPage() {
               value={d.name} onChange={(e) => void setDataset(d.slot, (x) => ({ ...x, name: e.target.value }))} />
             <Stats d={d} />
             <DropZone hasData={d.properties.length > 0} error={errors[d.slot]} onFile={(f) => void onFile(d.slot, f)} />
+            <Button variant="secondary" onClick={() => setScanning(d.slot)}>Scan a document (AI)</Button>
             <div className="flex gap-2">
               {d.properties.length === 0 && (
                 <Button variant="secondary" onClick={() => void setDataset(d.slot, (x) => ({ ...x, properties: syntheticMarket(120, 11 + d.slot * 7, s.effectiveDate) }))}>Load sample (synthetic)</Button>
@@ -81,6 +84,16 @@ export default function DatasetsPage() {
           </section>
         ))}
       </div>
+      {scanning !== null && (
+        <ScanModal target="sales" sessionId={s.id} effectiveDate={s.effectiveDate} onClose={() => setScanning(null)}
+          onApply={async (a) => {
+            if (a.target !== 'sales') return
+            await setDataset(scanning, (d) => {
+              const known = new Set(d.properties.map((p) => p.id))
+              return { ...d, properties: [...d.properties, ...a.properties.filter((p) => !known.has(p.id))] }
+            })
+          }} />
+      )}
       <p className="mt-4 text-center text-xs text-text-muted">Only sold properties are used. Sample data is made up and only for trying the screens.</p>
       <div className="mt-4 flex justify-center">
         {loaded ? <Link className="rounded-md bg-accent px-6 py-3 font-semibold text-on-accent" href={`/session/${s.id}/results`}>Continue to results</Link>

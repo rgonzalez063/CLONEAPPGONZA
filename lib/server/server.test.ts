@@ -326,3 +326,24 @@ describe('prior choices', () => {
   })
 })
 
+describe('dashboard summary', () => {
+  it('counts only the signed-in user\'s own work', async () => {
+    const mine = await repo.createSession(db, alice, { ...input, name: 'Dash 1', effectiveDate: '2026-10-01' })
+    await repo.patchSession(db, alice, mine.id, { favorite: true, subject: { address: 'x', zip: '77449', gla: 1400, lot_size: 6000, baths_full: 2, baths_half: 0, stories: 1, garage: 1 },
+      widgets: { gla: { chosen: 60, done: true, locked: true, model: false, low: null, high: null }, lot_size: { chosen: null, done: false, locked: false, model: false, low: null, high: null } } })
+    await repo.patchDataset(db, alice, mine.id, 1, { upsert: [prop(1), prop(2, { deleted: true })] })
+    await repo.putMarketFile(db, alice, mine.id, 1, { name: 'm', listings: [{ id: '1', status: 'Sold', listDate: null, origListPrice: null, listPrice: null, soldPrice: null, closeDate: null, contractDate: null, offMarketDate: null, withdrawnDate: null, expirationDate: null, terminationDate: null, gla: null, lotSize: null, yearBuilt: null, dom: null, concessions: null, special: '' }] })
+    const other = await repo.createSession(db, bob, { ...input, name: 'Bob only' })
+    await repo.patchSession(db, bob, other.id, { widgets: { gla: { chosen: 999, done: true, locked: true, model: false, low: null, high: null } } })
+    const d = await repo.dashboardSummary(db, alice)
+    expect(d.totals.favorites).toBeGreaterThanOrEqual(1)
+    expect(d.totals.marketListings).toBeGreaterThanOrEqual(1)
+    const gla = d.adjustments.find((a) => a.feature === 'gla')!
+    expect(gla.high).toBeLessThan(999) // Bob's value never shows up
+    expect(d.zips.some((z) => z.zip === '77449')).toBe(true)
+    expect(d.recent.every((r) => r.sessionName !== 'Bob only')).toBe(true)
+    const b = await repo.dashboardSummary(db, bob)
+    expect(b.adjustments.find((a) => a.feature === 'gla')?.high).toBe(999)
+  })
+})
+

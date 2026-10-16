@@ -24,6 +24,18 @@ YOUR DATA
 - To move to a new computer, copy the whole folder, including ".data".
 - Forgot your password? Stop the app, open a terminal in this folder and run:  node scripts/set-password.mjs you@example.com "a new password of 10+ characters"
 
+AI DOCUMENT SCANNING (optional)
+- The app can read PDFs, photos and screenshots, Word, Excel, CSV and text files and pull out the subject's details, a table of sales, or market listings. You always review and correct what it found before anything is saved.
+- It needs your own Anthropic API key (create one at console.anthropic.com; usage is billed by Anthropic to you).
+  1. In this folder, copy the file named ".env.example" to ".env.local" (if you do not already have one).
+  2. Open ".env.local" in Notepad and put your key after ANTHROPIC_API_KEY=
+  3. Close the app window and start it again.
+- The file you scan is sent to Anthropic to be read. The app does not keep a copy. Do not scan anything you are not allowed to send.
+- Where to find it: "Scan a document (AI)" on each dataset card, "Fill from a document (AI)" in the subject form, and "Scan a document (AI)" on the Market analysis screen.
+
+DASHBOARD
+- "Dashboard" in the top bar shows three things: General (all your sessions), This session (progress, how much the methods agree, data quality, market snapshot) and Property data (prices, sizes, ages and timing of the sales, plus the sales most like the subject).
+
 USING IT
 - New session: pick the effective date, then drop in the two MLS exports (the sales around the subject, then the wider neighborhood).
 - Enter the subject (address, GLA, lot size, baths, garage). Optional: quality, condition and your cost per square foot for depreciated cost.

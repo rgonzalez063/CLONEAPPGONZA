@@ -6,6 +6,7 @@ import { FeatureWidget } from '@/components/FeatureWidget'
 import { Button, Modal, TextInput } from '@/components/ui'
 import { CommentsModal, ExportModal } from '@/components/ReportModals'
 import { PairedSettingsModal } from '@/components/PairedSettingsModal'
+import { ScanModal } from '@/components/ScanModal'
 import type { ReportInput } from '@/lib/documents'
 import { defaultCommentOptions } from '@/lib/comments'
 import { CONDITIONS, CONDITION_AGE, QUALITIES, QUALITY_LIFESPAN, depreciatedCostByCondition } from '@/engines'
@@ -18,14 +19,17 @@ import { useSession } from '@/lib/useSession'
 
 const blank: Subject = { address: '', zip: '', gla: null, lot_size: null, baths_full: null, baths_half: null, stories: null, garage: null }
 
-function SubjectModal({ initial, onDone, onCancel }: { initial: Subject; onDone: (s: Subject) => void; onCancel: () => void }) {
+function SubjectModal({ initial, sessionId, effectiveDate, onDone, onCancel }: { initial: Subject; sessionId: string; effectiveDate: string; onDone: (s: Subject) => void; onCancel: () => void }) {
   const [v, setV] = useState<Subject>(initial)
+  const [scanning, setScanning] = useState(false)
   const num = (k: keyof Subject) => ({ value: (v[k] as number | null) ?? '', onChange: (e: React.ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value === '' ? null : Number(e.target.value) }) })
   const errors = { address: v.address.trim() ? undefined : 'Enter the subject address.', gla: v.gla && v.gla > 0 ? undefined : 'Enter the GLA.' }
   const ok = !errors.address && !errors.gla
   return (
     <Modal title="About the subject property" onClose={onCancel}
       footer={<><Button variant="danger" onClick={onCancel}>Cancel</Button><Button disabled={!ok} onClick={() => onDone(v)}>Done</Button></>}>
+      <div className="mb-3 flex justify-end"><Button variant="secondary" onClick={() => setScanning(true)}>Fill from a document (AI)</Button></div>
+      {scanning && <ScanModal target="subject" sessionId={sessionId} effectiveDate={effectiveDate} onClose={() => setScanning(false)} onApply={(a) => { if (a.target === 'subject') setV((cur) => ({ ...cur, ...a.subject })) }} />}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2"><TextInput label="Address" value={v.address} error={errors.address} onChange={(e) => setV({ ...v, address: e.target.value })} /></div>
         <TextInput label="Zip code" value={v.zip} onChange={(e) => setV({ ...v, zip: e.target.value })} />
@@ -270,7 +274,7 @@ export default function ResultsPage() {
           onAdd={(key) => { setAdding(false); void patch(key, defaultWidget()) }} />
       )}
       {asking && (
-        <SubjectModal initial={session.subject ?? blank}
+        <SubjectModal initial={session.subject ?? blank} sessionId={session.id} effectiveDate={session.effectiveDate}
           onCancel={() => setAsking(false)}
           onDone={(sub) => { setAsking(false); void save({ ...session, subject: sub, widgets: Object.keys(session.widgets).length ? session.widgets : widgets }) }} />
       )}

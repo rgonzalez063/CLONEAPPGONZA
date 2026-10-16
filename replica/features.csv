@@ -69,3 +69,5 @@ Feature groups with options and Compare (two options in one group),results,could
 Market conditions 1004MC table,market,could,no,yes,"added from the ValuLab file: three periods, absorption, months of supply, medians, concessions"
 Seller concession and REO wording,market,could,no,yes,"own wording; copy buttons and in the workfile"
 Monthly trends and market characteristics,market,could,no,yes,"charts and a table; neighborhood price and age ranges"
+AI document scan (PDF, image, Word, Excel, text),data,could,no,yes,"subject, sales and market listings; review before saving; needs your own Anthropic key"
+Dashboard (general, session, property metrics),results,could,no,yes,"charts with number tables"

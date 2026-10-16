@@ -59,3 +59,7 @@ A template keeps: transactional settings, paired sales rules, comment options, t
 ## Market files
 - `market_files` (migration 003): up to two files per session (competing sales and listings; a wider neighborhood file), the listings as compact JSON (up to 10,000 each), and the appraiser's conclusions and wording. Read and written only through routes that check the session belongs to the signed-in user; deleted with the session; copied by a clone.
 - `GET /api/priors`: the signed-in user's own done adjustments in other sessions (same zip, within a year). Never other users'.
+
+## AI scanning
+- `POST /api/extract` sends one uploaded file to Anthropic's API with the user's own key (from the environment). The key is never written to the database or logs. Files are not stored. 15 MB limit, 40 scans per hour per user (in memory). `GET /api/dashboard` returns the signed-in user's own counts and medians only.
+- Privacy: scanned files leave the computer. The screen says so before any file is chosen.

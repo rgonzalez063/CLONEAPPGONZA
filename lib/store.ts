@@ -248,3 +248,21 @@ export const getMarketFiles = async (id: string) => (await api<{ files: MarketFi
 export const putMarketFile = (id: string, slot: number, body: { name?: string; listings?: Listing[]; notes?: MarketFile['notes'] }) =>
   api(`/api/sessions/${encodeURIComponent(id)}/market/${slot}`, { method: 'PUT', body })
 export const deleteMarketFile = (id: string, slot: number) => api(`/api/sessions/${encodeURIComponent(id)}/market/${slot}`, { method: 'DELETE' })
+
+// ------------------------------------------------------------------ AI document scan
+import type { ExtractTarget, Scan } from './extract'
+export interface ScanOutcome { scan: Scan; usage: { inputTokens: number; outputTokens: number }; model: string }
+export const scanStatus = () => api<{ model: string; keyInEnvironment: boolean; maxMegabytes: number }>('/api/extract')
+
+function toBase64(file: File): Promise<string> {
+  return new Promise((ok, fail) => {
+    const r = new FileReader()
+    r.onerror = () => fail(new Error('Could not read that file.'))
+    r.onload = () => ok(String(r.result).split(',')[1] ?? '')
+    r.readAsDataURL(file)
+  })
+}
+/** Sends one file to be read by the AI service and returns what it found. Nothing is saved yet. */
+export async function scanDocument(target: ExtractTarget, file: File): Promise<ScanOutcome> {
+  return api<ScanOutcome>('/api/extract', { method: 'POST', body: { target, fileName: file.name, mediaType: file.type, data: await toBase64(file) } })
+}

@@ -111,7 +111,7 @@ const TITLES: Record<string, string> = {
   'settings.transactional': 'Transactional settings changed', 'settings.paired_sales': 'Paired sales settings changed',
   'dataset.renamed': 'Dataset renamed', 'dataset.cleared': 'Dataset cleared', 'dataset.sales_added': 'Sales added', 'dataset.sales_dropped': 'Sales dropped',
   'sale.edited': 'Sale edited', 'sale.edit_undone': 'Edit undone', 'sale.edited_more': 'More sales edited', 'sales.removed': 'Sales removed', 'sales.recovered': 'Sales recovered',
-  'export.documents': 'Documents exported', 'market.loaded': 'Market file loaded', 'export.workfile': 'Workfile exported', 'template.saved': 'Saved as a template', 'template.updated': 'Template updated',
+  'export.documents': 'Documents exported', 'market.loaded': 'Market file loaded', 'ai.scanned': 'Document scanned', 'export.workfile': 'Workfile exported', 'template.saved': 'Saved as a template', 'template.updated': 'Template updated',
 }
 export const eventTitle = (type: string) => TITLES[type] ?? type.replace(/[._]/g, ' ')
 
@@ -136,6 +136,7 @@ export function eventDetail(type: string, d: Record<string, unknown>): string {
     case 'sale.edited_more': return `${flat(d.dataset)}: ${flat(d.more)} more edits not listed`
     case 'sales.removed': case 'sales.recovered': return `${flat(d.dataset)}: ${flat(d.count)} (MLS ${flat(d.mls)})`
     case 'export.documents': return flat(d.documents)
+    case 'ai.scanned': return `${flat(d.file)} (${flat(d.target)})`
     case 'market.loaded': return `${flat(d.file)}: ${flat(d.listings)} listings`
     case 'template.saved': case 'template.updated': return flat(d.name)
     default: return d.feature ? flat(d.feature) : Object.entries(d).map(([k, v]) => `${k}: ${flat(v)}`).join(', ')

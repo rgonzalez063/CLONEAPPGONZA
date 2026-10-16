@@ -10,7 +10,7 @@ export const err = (status: number, message: string) => NextResponse.json({ erro
 export const clientIp = (req: NextRequest) => (req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'local').slice(0, 60)
 
 /** Blocks cross-site form posts: JSON only, and the Origin (when sent) must be this site. */
-export function checkRequest(req: NextRequest): NextResponse | null {
+export function checkRequest(req: NextRequest, maxBody = MAX_BODY): NextResponse | null {
   if (req.method === 'GET' || req.method === 'HEAD') return null
   const type = req.headers.get('content-type') ?? ''
   if (!type.toLowerCase().startsWith('application/json')) return err(415, 'Send JSON.')
@@ -20,13 +20,13 @@ export function checkRequest(req: NextRequest): NextResponse | null {
     try { if (new URL(origin).host !== host) return err(403, 'Cross-site requests are not allowed.') } catch { return err(403, 'Bad origin.') }
   }
   const len = Number(req.headers.get('content-length') ?? 0)
-  if (len > MAX_BODY) return err(413, 'That request is too large.')
+  if (len > maxBody) return err(413, 'That request is too large.')
   return null
 }
 
-export async function readBody<T>(req: NextRequest, schema: ZodType<T>): Promise<{ ok: true; data: T } | { ok: false; res: NextResponse }> {
+export async function readBody<T>(req: NextRequest, schema: ZodType<T>, maxBody = MAX_BODY): Promise<{ ok: true; data: T } | { ok: false; res: NextResponse }> {
   const text = await req.text()
-  if (text.length > MAX_BODY) return { ok: false, res: err(413, 'That request is too large.') }
+  if (text.length > maxBody) return { ok: false, res: err(413, 'That request is too large.') }
   let raw: unknown
   try { raw = text ? JSON.parse(text) : {} } catch { return { ok: false, res: err(400, 'That is not valid JSON.') } }
   const r = schema.safeParse(raw)
@@ -37,8 +37,8 @@ export async function readBody<T>(req: NextRequest, schema: ZodType<T>): Promise
 export interface Ctx { db: Db; user: { id: string; email: string } }
 
 /** Runs a handler for the signed-in user, or answers 401. Also applies the request checks. */
-export async function withUser(req: NextRequest, fn: (c: Ctx) => Promise<NextResponse>): Promise<NextResponse> {
-  const bad = checkRequest(req)
+export async function withUser(req: NextRequest, fn: (c: Ctx) => Promise<NextResponse>, opts: { maxBody?: number } = {}): Promise<NextResponse> {
+  const bad = checkRequest(req, opts.maxBody)
   if (bad) return bad
   try {
     const db = await getDb()

@@ -21,6 +21,7 @@ export function Header() {
       <Link href="/" className="text-base font-semibold">Adjustment Support</Link>
       {email && (
         <nav aria-label="Main" className="flex gap-4 text-sm text-text-muted">
+          <Link href="/dashboard">Dashboard</Link>
           <Link href="/sessions">Sessions</Link>
           <Link href="/templates">Templates</Link>
           <Link href="/design">Design</Link>

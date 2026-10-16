@@ -289,3 +289,38 @@ export async function listPriorChoices(q: Queryable, userId: string, zip: string
      order by s.effective_date desc limit 500`, [userId, zip, effective, excludeId])
   return r.rows.map((x) => ({ sessionId: x.id, name: x.name, effectiveDate: day(x.effective_date), feature: x.key, value: Number(x.chosen), quality: x.quality }))
 }
+
+// ------------------------------------------------------------------ dashboard (this user's own figures only)
+export interface Dashboard {
+  totals: { sessions: number; favorites: number; createdLast30Days: number; sales: number; marketListings: number; templates: number; lastActive: string | null }
+  sessionsByMonth: { month: string; count: number }[]
+  zips: { zip: string; count: number }[]
+  adjustments: { feature: string; sessions: number; median: number; low: number; high: number }[]
+  activity: { type: string; count: number }[]
+  recent: { id: number; ts: string; type: string; detail: Record<string, unknown>; sessionId: string; sessionName: string }[]
+}
+
+export async function dashboardSummary(q: Queryable, userId: string): Promise<Dashboard> {
+  const one = async <T>(sql: string) => (await q.query<T & Record<string, unknown>>(sql, [userId])).rows[0]
+  const t = await one<{ sessions: string; favorites: string; created30: string; last_active: unknown }>(
+    `select count(*) as sessions, count(*) filter (where favorite) as favorites, count(*) filter (where created_at > now() - interval '30 days') as created30, max(updated_at) as last_active from sessions where user_id = $1`)
+  const sales = await one<{ n: string }>(`select count(*) as n from properties p join datasets d on d.id = p.dataset_id join sessions s on s.id = d.session_id where s.user_id = $1 and not p.deleted`)
+  const market = await one<{ n: string }>(`select coalesce(sum(jsonb_array_length(listings)), 0) as n from market_files where user_id = $1`)
+  const templates = await one<{ n: string }>(`select count(*) as n from templates where user_id = $1`)
+  const byMonth = await q.query<{ m: string; n: string }>(`select to_char(date_trunc('month', created_at), 'YYYY-MM') as m, count(*) as n from sessions where user_id = $1 and created_at > now() - interval '12 months' group by 1 order by 1`, [userId])
+  const zips = await q.query<{ zip: string; n: string }>(`select subject->>'zip' as zip, count(*) as n from sessions where user_id = $1 and coalesce(subject->>'zip', '') <> '' group by 1 order by 2 desc, 1 limit 8`, [userId])
+  const adj = await q.query<{ key: string; n: string; med: string; lo: string; hi: string }>(
+    `select w.key, count(*) as n, percentile_cont(0.5) within group (order by (w.value->>'chosen')::numeric) as med, min((w.value->>'chosen')::numeric) as lo, max((w.value->>'chosen')::numeric) as hi
+     from sessions s, jsonb_each(s.widgets) as w where s.user_id = $1 and (w.value->>'done') = 'true' and (w.value->>'chosen') is not null group by w.key order by count(*) desc, w.key limit 30`, [userId])
+  const act = await q.query<{ type: string; n: string }>(`select event_type as type, count(*) as n from session_events where user_id = $1 and ts > now() - interval '30 days' group by 1 order by 2 desc, 1 limit 12`, [userId])
+  const recent = await q.query<{ id: string; ts: unknown; event_type: string; detail: Record<string, unknown>; sid: string; name: string }>(
+    `select e.id, e.ts, e.event_type, e.detail, s.id as sid, s.name from session_events e join sessions s on s.id = e.session_id where e.user_id = $1 order by e.ts desc, e.id desc limit 12`, [userId])
+  return {
+    totals: { sessions: Number(t.sessions), favorites: Number(t.favorites), createdLast30Days: Number(t.created30), sales: Number(sales.n), marketListings: Number(market.n), templates: Number(templates.n), lastActive: t.last_active ? iso(t.last_active) : null },
+    sessionsByMonth: byMonth.rows.map((r) => ({ month: r.m, count: Number(r.n) })),
+    zips: zips.rows.map((r) => ({ zip: r.zip, count: Number(r.n) })),
+    adjustments: adj.rows.map((r) => ({ feature: r.key, sessions: Number(r.n), median: Number(r.med), low: Number(r.lo), high: Number(r.hi) })),
+    activity: act.rows.map((r) => ({ type: r.type, count: Number(r.n) })),
+    recent: recent.rows.map((r) => ({ id: Number(r.id), ts: iso(r.ts), type: r.event_type, detail: r.detail, sessionId: r.sid, sessionName: r.name })),
+  }
+}
