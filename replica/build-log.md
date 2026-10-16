@@ -126,3 +126,10 @@ Your ValuLab file is a larger single-page version of the same tool. I read it as
 - Error scores for regression match Synapse; sensitivity and grouped-data error scores use my definition and differ.
 - Mobile: layout works but the limit sliders are cramped; revisit in design polish.
 - Keyboard-only pass not yet done for the chart (sliders are native inputs and reachable).
+
+## a la mode TOTAL fill (new)
+- **What:** Export > "Fill a TOTAL report". You enter the subject and comps in TOTAL, save the report as XML (MISMO 2.6GSE, the UAD XML TOTAL itself writes), and pick that file. The app writes each finished feature's adjustment into the sales grid (GLA, site area, age, car storage, room count, and other features into the free "other" lines), redoes each comp's net/gross totals and adjusted price, optionally refreshes the 1004MC figures and market wording, and downloads an adjusted copy. Your original is untouched. Done in the browser; the file is not uploaded.
+- **Matching:** comps are matched to session sales by the MLS number in the file ("HARMLS #…"). Adjustment = (subject value - comp value) x chosen rate, rounded to the nearest $1/5/10/50/100 you pick.
+- **Left alone:** financing/concession and date-of-sale rows, trend boxes of the 1004MC, the appraised value. The old PDF stored inside the XML is removed (it shows the old numbers).
+- **Checked:** unit tests on a small fixture and on your John Rolfe XML (4 comps; totals follow TOTAL's own rule: net = sum of the grid, room lines counted once).
+- **Not yet checked:** opening the adjusted file in TOTAL itself (not available here). Please try it on a copy first.

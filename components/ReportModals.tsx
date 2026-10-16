@@ -10,6 +10,7 @@ import { download, toPdf, toRtf } from '@/lib/render'
 import { eventDetail, eventTitle } from '@/lib/activity'
 import { getMarketFiles, listEvents, logEvent } from '@/lib/store'
 import { buildMarketDoc } from '@/lib/marketDocs'
+import { fillTotalXml, type FillReport } from '@/lib/totalXml'
 import { Button, Modal } from './ui'
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'session'
@@ -120,6 +121,7 @@ export function ExportModal({ input, transactional, onClose }: { input: ReportIn
     } catch (e) { setError(e instanceof Error ? e.message : 'The workfile could not be built.') } finally { setBusy(false) }
   }
 
+  const [totalOpen, setTotalOpen] = useState(false)
   const box = (k: Choice, label: string) => (
     <label className="flex items-center gap-2"><input type="checkbox" checked={sel[k]} onChange={(e) => setSel({ ...sel, [k]: e.target.checked })} /> {label}</label>
   )
@@ -143,7 +145,83 @@ export function ExportModal({ input, transactional, onClose }: { input: ReportIn
         <p className="mb-2 text-xs text-text-muted">One zip with every document above in PDF and RTF, a details page for each feature, your settings, what was left out of the data, and the sales used as a CSV.</p>
         <Button variant="secondary" loading={busy} onClick={() => void workfile()}>Download the workfile (zip)</Button>
       </div>
+      <div className="mt-4 border-t border-border pt-3">
+        <p className="mb-2 font-semibold">a la mode TOTAL</p>
+        <p className="mb-2 text-xs text-text-muted">Put your chosen adjustments and the 1004MC figures into a TOTAL report. Nothing is sent anywhere; the file is read and rewritten in your browser.</p>
+        <Button variant="secondary" onClick={() => setTotalOpen((v) => !v)}>{totalOpen ? 'Hide' : 'Fill a TOTAL report'}</Button>
+        {totalOpen && <TotalFill input={input} base={base} />}
+      </div>
       {error && <p role="alert" className="mt-3 text-danger">{error}</p>}
     </Modal>
+  )
+}
+
+function TotalFill({ input, base }: { input: ReportInput; base: string }) {
+  const [roundTo, setRoundTo] = useState(50)
+  const [withMarket, setWithMarket] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [report, setReport] = useState<FillReport | null>(null)
+  const keys = Object.keys(input.widgets).filter((k) => input.widgets[k].done && input.widgets[k].chosen !== null && resolveFeature(k))
+
+  async function onFile(file: File | undefined) {
+    if (!file) return
+    setBusy(true); setError(''); setReport(null)
+    try {
+      const xml = await file.text()
+      const rates: Record<string, number> = {}
+      for (const k of keys) rates[k] = input.widgets[k].chosen as number
+      const sub = input.session.subject
+      const subject: Record<string, number | null> = sub ? { gla: sub.gla, lot_size: sub.lot_size, baths_full: sub.baths_full, baths_half: sub.baths_half, stories: sub.stories, garage: sub.garage } : {}
+      for (const k of keys) if (input.widgets[k].subject !== undefined && input.widgets[k].subject !== null) subject[k] = input.widgets[k].subject as number
+      const comps = new Map<string, Record<string, number | null>>()
+      for (const d of input.prepared) for (const p of d.props) if (!comps.has(p.id)) comps.set(p.id, p.values)
+      let market = null
+      if (withMarket) {
+        const files = await getMarketFiles(input.session.id).catch(() => [])
+        const f = files.find((x) => x.slot === 1)
+        if (f?.listings.length) market = { listings: f.listings, effective: input.session.effectiveDate, source: String(f.notes.source || input.session.mls || 'The MLS'), notes: f.notes }
+      }
+      const out = fillTotalXml({ xml, rates, subject, comps, options: { roundTo, dropEmbeddedPdf: true, market } })
+      setReport(out)
+      download(`${file.name.replace(/\.xml$/i, '')}-adjusted.xml`, out.xml, 'application/xml')
+      void logEvent(input.session.id, 'export.documents', { documents: 'TOTAL report (XML)' })
+    } catch (e) { setError(e instanceof Error ? e.message : 'The file could not be filled.') } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="mt-3 flex flex-col gap-3 rounded-md border border-border p-3 text-sm">
+      <ol className="list-decimal pl-5 text-xs text-text-muted">
+        <li>In TOTAL, enter the subject and the comps, then save the report as XML (UAD).</li>
+        <li>Choose that file below. The adjusted copy downloads; your original is not touched.</li>
+        <li>In TOTAL, use File &gt; Open UAD XML on the copy and review it.</li>
+      </ol>
+      <p className="text-xs">{keys.length} finished feature{keys.length === 1 ? '' : 's'} will be written: {keys.map((k) => resolveFeature(k)!.label).join(', ') || 'none yet'}.</p>
+      <label className="flex items-center gap-2">Round each adjustment to the nearest
+        <select className="rounded-md border border-border-input p-1" value={roundTo} onChange={(e) => setRoundTo(Number(e.target.value))}>
+          {[1, 5, 10, 50, 100].map((v) => <option key={v} value={v}>${v}</option>)}
+        </select>
+      </label>
+      <label className="flex items-center gap-2"><input type="checkbox" checked={withMarket} onChange={(e) => setWithMarket(e.target.checked)} /> Also fill the 1004MC figures and market wording (needs a market file)</label>
+      <label className="flex flex-col gap-1">TOTAL report saved as XML
+        <input type="file" accept=".xml,text/xml,application/xml" disabled={busy || keys.length === 0} onChange={(e) => void onFile(e.target.files?.[0])} />
+      </label>
+      {error && <p role="alert" className="text-danger">{error}</p>}
+      {report && (
+        <div aria-live="polite">
+          <table className="w-full text-xs">
+            <thead><tr className="text-left"><th>Comp</th><th>MLS</th><th>Net adjustment</th><th>Adjusted price</th></tr></thead>
+            <tbody>
+              {report.comps.map((c) => (
+                <tr key={c.seq}><td>{c.seq}. {c.address}</td><td>{c.mls}{c.matched ? '' : ' (not in session)'}</td><td>{c.total === null ? '-' : c.total.toLocaleString('en-US')}</td><td>{c.adjusted === null ? '-' : c.adjusted.toLocaleString('en-US')}</td></tr>
+              ))}
+            </tbody>
+          </table>
+          {report.marketUpdated && <p className="mt-1 text-xs">1004MC figures and wording were updated.</p>}
+          {report.removedPdf && <p className="mt-1 text-xs">The copy of the old PDF stored inside the file was removed; TOTAL makes a new one.</p>}
+          {report.warnings.length > 0 && <ul className="mt-1 list-disc pl-5 text-xs text-warning">{report.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
+        </div>
+      )}
+    </div>
   )
 }
