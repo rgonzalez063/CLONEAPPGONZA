@@ -186,6 +186,7 @@ export default function ResultsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link className="rounded-md border border-border-input px-3 py-2 text-sm" href={`/session/${session.id}/datasets`}>Datasets</Link>
+          <Link className="rounded-md border border-border-input px-3 py-2 text-sm" href={`/session/${session.id}/market`}>Market analysis</Link>
           <Link className="rounded-md border border-border-input px-3 py-2 text-sm" href={`/session/${session.id}/activity`}>Activity log</Link>
           <Button variant="secondary" onClick={() => setAsking(true)}>Edit subject</Button>
           <Button variant="secondary" onClick={() => setAdding(true)}>Add feature</Button>

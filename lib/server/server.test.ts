@@ -269,3 +269,40 @@ describe('clone, favorites and the activity log', () => {
     expect(Number((await db.query<{ n: string }>('select count(*) as n from session_events where session_id = $1', [s.id])).rows[0].n)).toBe(20000)
   }, 60000)
 })
+
+describe('market files', () => {
+  const listings = (n: number) => Array.from({ length: n }, (_, i) => ({
+    id: `L${i}`, status: 'Sold', listDate: '2026-01-01', origListPrice: 200000, listPrice: 200000, soldPrice: 195000, closeDate: '2026-03-01', contractDate: null, offMarketDate: null,
+    withdrawnDate: null, expirationDate: null, terminationDate: null, gla: 1500, lotSize: 6000, yearBuilt: 1990, dom: 20, concessions: null, special: '',
+  }))
+  it('stores, replaces and removes a file, and only its owner can reach it', async () => {
+    const s = await repo.createSession(db, alice, { ...input, name: 'Mkt' })
+    expect(await repo.putMarketFile(db, alice, s.id, 1, { name: 'Competing', listings: listings(3) })).toBe(true)
+    expect(await repo.putMarketFile(db, alice, s.id, 1, { name: 'Competing v2', listings: listings(5) })).toBe(true)
+    const files = (await repo.listMarketFiles(db, alice, s.id))!
+    expect(files).toHaveLength(1)
+    expect(files[0]).toMatchObject({ slot: 1, name: 'Competing v2' })
+    expect(files[0].listings).toHaveLength(5)
+    await repo.putMarketFile(db, alice, s.id, 1, { notes: { values: 'Stable', assist: true } }) // notes alone keep the listings
+    const again = (await repo.listMarketFiles(db, alice, s.id))![0]
+    expect(again.listings).toHaveLength(5)
+    expect(again.notes).toEqual({ values: 'Stable', assist: true })
+    expect(await repo.listMarketFiles(db, bob, s.id)).toBeNull()
+    expect(await repo.putMarketFile(db, bob, s.id, 2, { name: 'x', listings: listings(1) })).toBe(false)
+    expect(await repo.deleteMarketFile(db, bob, s.id, 1)).toBe(false)
+    expect(await repo.deleteMarketFile(db, alice, s.id, 1)).toBe(true)
+    expect(await repo.listMarketFiles(db, alice, s.id)).toEqual([])
+  })
+  it('is copied by a clone and removed with the session', async () => {
+    const s = await repo.createSession(db, alice, { ...input, name: 'Mkt2' })
+    await repo.putMarketFile(db, alice, s.id, 2, { name: 'Neighborhood', listings: listings(4), notes: { values: 'Stable' } })
+    const c = (await repo.cloneSession(db, alice, s.id))!
+    expect((await repo.listMarketFiles(db, alice, c.id))![0].listings).toHaveLength(4)
+    expect((await repo.listMarketFiles(db, alice, c.id))![0].notes).toEqual({ values: 'Stable' })
+    await repo.deleteSession(db, alice, s.id)
+    expect((await repo.listMarketFiles(db, alice, c.id))).toHaveLength(1)
+    const left = await db.query('select count(*) as n from market_files where session_id = $1', [s.id])
+    expect(Number((left.rows[0] as { n: string }).n)).toBe(0)
+  })
+})
+

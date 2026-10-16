@@ -1,6 +1,7 @@
 'use client'
 import { diffEvents, type ActivityEvent, type LoggedEvent } from './activity'
 import type { StoredProperty } from './importer'
+import type { Listing } from '@/engines'
 import type { Dataset, Session, SessionSummary, Template, TemplateFeature, TemplateSettings, WidgetState } from './types'
 
 export type { Dataset, Session, SessionSummary, Subject, Template, TemplateFeature, TemplateSettings, WidgetState } from './types'
@@ -235,3 +236,10 @@ export async function importOldSession(old: Session): Promise<Session> {
   return next
 }
 export function forgetOldBrowserSessions() { try { localStorage.removeItem(OLD_KEY) } catch { /* ignore */ } }
+
+// ------------------------------------------------------------------ market files (every listing of every status)
+export interface MarketFile { slot: number; name: string; listings: Listing[]; notes: Record<string, string | boolean | null>; updatedAt: string }
+export const getMarketFiles = async (id: string) => (await api<{ files: MarketFile[] }>(`/api/sessions/${encodeURIComponent(id)}/market`)).files
+export const putMarketFile = (id: string, slot: number, body: { name?: string; listings?: Listing[]; notes?: MarketFile['notes'] }) =>
+  api(`/api/sessions/${encodeURIComponent(id)}/market/${slot}`, { method: 'PUT', body })
+export const deleteMarketFile = (id: string, slot: number) => api(`/api/sessions/${encodeURIComponent(id)}/market/${slot}`, { method: 'DELETE' })

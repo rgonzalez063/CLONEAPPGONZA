@@ -8,7 +8,8 @@ import {
 import { resolveFeature } from '@/lib/features'
 import { download, toPdf, toRtf } from '@/lib/render'
 import { eventDetail, eventTitle } from '@/lib/activity'
-import { listEvents, logEvent } from '@/lib/store'
+import { getMarketFiles, listEvents, logEvent } from '@/lib/store'
+import { buildMarketDoc } from '@/lib/marketDocs'
 import { Button, Modal } from './ui'
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'session'
@@ -53,10 +54,10 @@ export function CommentsModal({ input, onClose, onChange, transactional, onTrans
   )
 }
 
-type Choice = 'summary' | 'comments' | 'overview'
+type Choice = 'summary' | 'comments' | 'overview' | 'market'
 
 export function ExportModal({ input, transactional, onClose }: { input: ReportInput; transactional: boolean; onClose: () => void }) {
-  const [sel, setSel] = useState<Record<Choice, boolean>>({ summary: true, comments: true, overview: false })
+  const [sel, setSel] = useState<Record<Choice, boolean>>({ summary: true, comments: true, overview: false, market: false })
   const [format, setFormat] = useState<'pdf' | 'rtf'>('pdf')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -67,13 +68,24 @@ export function ExportModal({ input, transactional, onClose }: { input: ReportIn
     if (format === 'pdf') download(`${name}.pdf`, await toPdf(blocks, landscape), 'application/pdf')
     else download(`${name}.rtf`, toRtf(blocks, landscape), 'application/rtf')
   }
+  async function marketBlocks() {
+    const files = await getMarketFiles(input.session.id).catch(() => [])
+    const comp = files.find((f) => f.slot === 1)
+    if (!comp?.listings.length) return null
+    return buildMarketDoc(comp.listings, input.session.effectiveDate, input.session.subject?.address ?? input.session.name, comp.notes, input.session.mls, files.find((f) => f.slot === 2)?.listings)
+  }
   async function run() {
     setBusy(true); setError('')
     try {
       if (sel.summary) await one(`${base}-adjustments`, buildSummary(input), true)
       if (sel.comments) await one(`${base}-comments`, buildComments(input, transactional))
       if (sel.overview) await one(`${base}-methods`, buildMethodOverview(input))
-      void logEvent(input.session.id, 'export.documents', { documents: [sel.summary && 'adjustment summary', sel.comments && 'comments', sel.overview && 'method overview'].filter(Boolean).join(', ') + ` (${format.toUpperCase()})` })
+      if (sel.market) {
+        const m = await marketBlocks()
+        if (m) await one(`${base}-market-conditions`, m)
+        else setError('Load a market file first (Market analysis on the results page).')
+      }
+      void logEvent(input.session.id, 'export.documents', { documents: [sel.summary && 'adjustment summary', sel.comments && 'comments', sel.overview && 'method overview', sel.market && 'market conditions'].filter(Boolean).join(', ') + ` (${format.toUpperCase()})` })
     } catch (e) { setError(e instanceof Error ? e.message : 'The export failed.') } finally { setBusy(false) }
   }
   async function workfile() {
@@ -90,6 +102,10 @@ export function ExportModal({ input, transactional, onClose }: { input: ReportIn
       await add('Adjustment-Method-Overview', buildMethodOverview(input))
       await add('Settings', buildSettings(input))
       await add('Property-Information', buildPropertyInfo(input))
+      try {
+        const m = await marketBlocks()
+        if (m) await add('Market-Conditions', m)
+      } catch { /* optional */ }
       try {
         const events = (await listEvents(input.session.id)).slice().reverse()
         await add('Activity-Log', [
@@ -115,6 +131,7 @@ export function ExportModal({ input, transactional, onClose }: { input: ReportIn
         {box('summary', 'Primary adjustment summary (results by method)')}
         {box('comments', 'Adjustment comments')}
         {box('overview', 'Method overview')}
+        {box('market', 'Market conditions (1004MC)')}
         <div className="mt-2 flex items-center gap-4">
           <label className="flex items-center gap-1"><input type="radio" name="fmt" checked={format === 'pdf'} onChange={() => setFormat('pdf')} /> PDF</label>
           <label className="flex items-center gap-1"><input type="radio" name="fmt" checked={format === 'rtf'} onChange={() => setFormat('rtf')} /> RTF (to copy and paste)</label>

@@ -1,8 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { findPairs, groupedData, lad, median, medianSquares, modifiedQuantile, ols, pairedSales, regression, robustOls, sensitivity, theilSen } from '../engines'
+import { mc1004, reoStats, findPairs, groupedData, lad, median, medianSquares, modifiedQuantile, ols, pairedSales, regression, robustOls, sensitivity, theilSen } from '../engines'
 import { exteriorSignature, groupAnalyses } from './analysis'
+import { importMarketCsv } from './marketImport'
 import { FEATURES, resolveFeature } from './features'
 import { importCsv } from './importer'
 import { applyTransactional, defaultTransactional } from './transactional'
@@ -266,3 +267,20 @@ describe.skipIf(!haveJ)('real John Rolfe Ln session (effective 2026-10-09)', () 
     expect(Math.round(res[0].value!)).toBe(10894)
   })
 })
+
+describe.skipIf(!fs.existsSync(path.resolve(__dirname, '../.sample/john/mc.csv')))('real 1004MC export (John Rolfe Ln, 68 listings of every status)', () => {
+  const r = importMarketCsv(fs.readFileSync(path.resolve(__dirname, '../.sample/john/mc.csv'), 'utf8'))
+  it('reads every listing and every status', () => {
+    expect(r.missing).toEqual([])
+    expect(r.listings).toHaveLength(68)
+    expect(new Set(r.listings.map((l) => l.status))).toEqual(new Set(['Sold', 'Active', 'Terminated', 'Expired', 'Withdrawn', 'Pending', 'Option Pending']))
+  })
+  it('gives the 1004MC counts: 22 closed sales in 12 months, split 10 / 8 / 4, with 13 / 10 / 3 active listings at the period ends', () => {
+    const mc = mc1004(r.listings, '2026-10-09')
+    expect(mc.map((c) => c.sales)).toEqual([10, 8, 4])
+    expect(mc.map((c) => c.actives)).toEqual([13, 10, 3])
+    expect(mc[2].monthsSupply).toBeCloseTo(2.25, 6)
+  })
+  it('flags the one REO closed sale', () => { expect(reoStats(r.listings, '2026-10-09').reo).toBe(1) })
+})
+

@@ -101,6 +101,7 @@ export async function cloneSession(q: Queryable, userId: string, id: string): Pr
      select nd.id, p.mls_number, p.sale_price, p.sale_date, p.contract_date, p.status, p.vals, p.meta, p.src_text, p.deleted, p.edits
      from properties p join datasets od on od.id = p.dataset_id join datasets nd on nd.session_id = $2 and nd.slot = od.slot
      where od.session_id = $1`, [id, newId])
+  await q.query('insert into market_files (session_id, user_id, slot, name, listings, notes) select $2, user_id, slot, name, listings, notes from market_files where session_id = $1', [id, newId])
   await addEvents(q, userId, newId, [{ type: 'session.cloned', detail: { from: src.rows[0].name } }])
   return getSession(q, userId, newId)
 }
@@ -245,4 +246,31 @@ export async function listEvents(q: Queryable, userId: string, sessionId: string
   const r = await q.query<{ id: string; ts: unknown; event_type: string; detail: Record<string, unknown> }>(
     'select id, ts, event_type, detail from session_events where session_id = $1 and user_id = $2 order by ts desc, id desc limit $3', [sessionId, userId, Math.min(limit, 5000)])
   return r.rows.map((e) => ({ id: Number(e.id), ts: iso(e.ts), type: e.event_type, detail: e.detail }))
+}
+
+// ------------------------------------------------------------------ market files
+export interface MarketFileRow { slot: number; name: string; listings: unknown[]; notes: Record<string, string | boolean | null>; updatedAt: string }
+
+export async function listMarketFiles(q: Queryable, userId: string, sessionId: string): Promise<MarketFileRow[] | null> {
+  const owns = await q.query('select 1 from sessions where id = $1 and user_id = $2', [sessionId, userId])
+  if (!owns.rows.length) return null
+  const r = await q.query<{ slot: number; name: string; listings: unknown[]; notes: MarketFileRow['notes']; updated_at: unknown }>(
+    'select slot, name, listings, notes, updated_at from market_files where session_id = $1 and user_id = $2 order by slot', [sessionId, userId])
+  return r.rows.map((x) => ({ slot: x.slot, name: x.name, listings: x.listings, notes: x.notes ?? {}, updatedAt: iso(x.updated_at) }))
+}
+
+/** Adds or changes a market file. A part left out (listings, name, notes) is kept as it was. */
+export async function putMarketFile(q: Queryable, userId: string, sessionId: string, slot: number, p: { name?: string; listings?: unknown[]; notes?: Record<string, string | boolean | null> }): Promise<boolean> {
+  const owns = await q.query('select 1 from sessions where id = $1 and user_id = $2', [sessionId, userId])
+  if (!owns.rows.length) return false
+  await q.query(
+    `insert into market_files (session_id, user_id, slot, name, listings, notes) values ($1, $2, $3, coalesce($4, ''), coalesce($5::jsonb, '[]'::jsonb), coalesce($6::jsonb, '{}'::jsonb))
+     on conflict (session_id, slot) do update set name = coalesce($4, market_files.name), listings = coalesce($5::jsonb, market_files.listings), notes = coalesce($6::jsonb, market_files.notes), updated_at = now()`,
+    [sessionId, userId, slot, p.name ?? null, p.listings ? JSON.stringify(p.listings) : null, p.notes ? JSON.stringify(p.notes) : null])
+  return true
+}
+
+export async function deleteMarketFile(q: Queryable, userId: string, sessionId: string, slot: number): Promise<boolean> {
+  const r = await q.query('delete from market_files where session_id = $1 and user_id = $2 and slot = $3 returning slot', [sessionId, userId, slot])
+  return r.rows.length > 0
 }

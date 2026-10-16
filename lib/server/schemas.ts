@@ -75,3 +75,13 @@ export const eventsInput = z.object({
     at: z.string().datetime().optional(),
   })).min(1).max(200),
 }).strict()
+
+const dateOrNull = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable()
+const moneyOrNull = z.number().finite().min(-1e9).max(1e10).nullable()
+export const listing = z.object({
+  id: z.string().min(1).max(64), status: z.string().max(60), listDate: dateOrNull, origListPrice: moneyOrNull, listPrice: moneyOrNull, soldPrice: moneyOrNull,
+  closeDate: dateOrNull, contractDate: dateOrNull, offMarketDate: dateOrNull, withdrawnDate: dateOrNull, expirationDate: dateOrNull, terminationDate: dateOrNull,
+  gla: moneyOrNull, lotSize: moneyOrNull, yearBuilt: moneyOrNull, dom: moneyOrNull, concessions: moneyOrNull, special: z.string().max(400),
+})
+export const marketNotes = z.record(z.string().max(40), z.union([z.string().max(2000), z.boolean(), z.null()])).refine((n) => Object.keys(n).length <= 40, 'Too many notes.')
+export const marketFile = z.object({ name: z.string().max(120).optional(), listings: z.array(listing).max(10000).optional(), notes: marketNotes.optional() })
