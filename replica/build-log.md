@@ -133,3 +133,9 @@ Your ValuLab file is a larger single-page version of the same tool. I read it as
 - **Left alone:** financing/concession and date-of-sale rows, trend boxes of the 1004MC, the appraised value. The old PDF stored inside the XML is removed (it shows the old numbers).
 - **Checked:** unit tests on a small fixture and on your John Rolfe XML (4 comps; totals follow TOTAL's own rule: net = sum of the grid, room lines counted once).
 - **Not yet checked:** opening the adjusted file in TOTAL itself (not available here). Please try it on a copy first.
+
+## Sales into TOTAL (new)
+- **Importer now keeps** each sale's street address, city, ZIP, days on market, coordinates, subdivision and list price (they were being dropped). Sessions made before this need the MLS file loaded again to get addresses.
+- **Export > a la mode TOTAL:** choose up to 12 sales; they become comparable columns 1..N of the TOTAL XML (existing columns are updated, extra ones are copied from comparable 1). Written in UAD wording: address and distance/direction from the subject, price and price per sqft, source "HARMLS #id;DOM n", sale/contract dates (s07/26;c06/26), financing and concessions, sale type (arm's length / REO / short sale), GLA, site area, age, bedrooms/baths, car storage. Old dollar amounts and totals in those columns are cleared, then the adjustment fill runs in the same step.
+- **Not known to the app (copied from comp 1, to review in TOTAL):** quality, condition, design, view, location, heating/cooling, amenities, "other" feature lines.
+- **Checked:** unit tests (fixture and the John Rolfe report); not opened in TOTAL itself.

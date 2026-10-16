@@ -52,6 +52,15 @@ const ALIASES: Record<string, string[]> = {
   lotdesc: ['lotdescription'],
   interior: ['interior'],
   amenities: ['hoaamenities'],
+  // Identity of the sale, kept so the sale can be put into an appraisal report (TOTAL) as a comparable.
+  address: ['address', 'fulladdress', 'streetaddress'],
+  city: ['citylocation', 'city'],
+  zip: ['zipcode', 'zip', 'postalcode'],
+  dom: ['dom', 'daysonmarket'],
+  lat: ['latitude'],
+  lng: ['longitude'],
+  subdivision: ['subdivision'],
+  listPrice: ['listprice', 'lastlistprice'],
 }
 const REQUIRED = ['id', 'salePrice', 'saleDate', 'gla']
 
@@ -140,6 +149,7 @@ export function importCsv(text: string, effectiveDate: string): ImportResult {
     values.public_sewer = ws ? (ws.includes('public sewer') ? 1 : 0) : null
     values.public_water = ws ? (ws.includes('public water') ? 1 : 0) : null
     const text = { cool: get('cool') ?? '', heat: get('heat') ?? '', exterior: get('exterior') ?? '', energy: get('energy') ?? '', lotdesc: get('lotdesc') ?? '', interior: get('interior') ?? '', amenities: get('amenities') ?? '' }
+    Object.assign(text, { address: (get('address') ?? '').trim(), city: (get('city') ?? '').trim(), zip: (get('zip') ?? '').trim().slice(0, 5), dom: (get('dom') ?? '').trim(), lat: (get('lat') ?? '').trim(), lng: (get('lng') ?? '').trim(), subdivision: (get('subdivision') ?? '').trim(), listPrice: (get('listPrice') ?? '').trim() })
     Object.assign(values, groupFlags(text))
     out.properties.push({
       id, salePrice: price, saleDate, contractDate: toIso(get('contractDate')), status, values,

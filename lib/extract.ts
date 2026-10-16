@@ -99,7 +99,7 @@ export function toProperties(rows: SaleRow[], effectiveDate: string): ConvertedS
       pool: r.pool === null ? null : r.pool ? 1 : 0, age: yb ? year - yb : null, year_built: yb,
     }
     properties.push({
-      id, salePrice: Math.round(price), saleDate: date, contractDate: isoDate(r.contractDate), status: /closed|sold/i.test(r.status ?? '') || !r.status ? 'closed' : text(r.status, 30), values,
+      id, salePrice: Math.round(price), saleDate: date, contractDate: isoDate(r.contractDate), text: r.address ? { address: text(r.address, 120) } : undefined, status: /closed|sold/i.test(r.status ?? '') || !r.status ? 'closed' : text(r.status, 30), values,
       meta: { concessions: inRange(num(r.concessions), 0, 1e7) ?? 0, financing: text(r.financing), special: '', ownership: '' },
     })
   })

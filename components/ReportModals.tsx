@@ -11,6 +11,7 @@ import { eventDetail, eventTitle } from '@/lib/activity'
 import { getMarketFiles, listEvents, logEvent } from '@/lib/store'
 import { buildMarketDoc } from '@/lib/marketDocs'
 import { fillTotalXml, type FillReport } from '@/lib/totalXml'
+import { placeComps, type PlaceReport } from '@/lib/totalComps'
 import { Button, Modal } from './ui'
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'session'
@@ -147,7 +148,7 @@ export function ExportModal({ input, transactional, onClose }: { input: ReportIn
       </div>
       <div className="mt-4 border-t border-border pt-3">
         <p className="mb-2 font-semibold">a la mode TOTAL</p>
-        <p className="mb-2 text-xs text-text-muted">Put your chosen adjustments and the 1004MC figures into a TOTAL report. Nothing is sent anywhere; the file is read and rewritten in your browser.</p>
+        <p className="mb-2 text-xs text-text-muted">Put sales from your analysis into a TOTAL report as comps, with your chosen adjustments and the 1004MC figures. Nothing is sent anywhere; the file is read and rewritten in your browser.</p>
         <Button variant="secondary" onClick={() => setTotalOpen((v) => !v)}>{totalOpen ? 'Hide' : 'Fill a TOTAL report'}</Button>
         {totalOpen && <TotalFill input={input} base={base} />}
       </div>
@@ -162,13 +163,29 @@ function TotalFill({ input, base }: { input: ReportInput; base: string }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [report, setReport] = useState<FillReport | null>(null)
+  const [placed, setPlaced] = useState<PlaceReport | null>(null)
+  const [picked, setPicked] = useState<string[]>([])
+  const [slot, setSlot] = useState(input.session.datasets.find((d) => d.properties.length)?.slot ?? 1)
+  const [filter, setFilter] = useState('')
+  const sales = useMemo(() => {
+    const d = input.session.datasets.find((x) => x.slot === slot)
+    const q = filter.trim().toLowerCase()
+    return (d?.properties ?? []).filter((p) => !p.deleted && (!q || p.id.toLowerCase().includes(q) || (p.text?.address ?? '').toLowerCase().includes(q))).slice().sort((a, b) => b.saleDate.localeCompare(a.saleDate))
+  }, [input.session.datasets, slot, filter])
+  const toggle = (id: string) => setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= 12 ? cur : [...cur, id]))
   const keys = Object.keys(input.widgets).filter((k) => input.widgets[k].done && input.widgets[k].chosen !== null && resolveFeature(k))
 
   async function onFile(file: File | undefined) {
     if (!file) return
-    setBusy(true); setError(''); setReport(null)
+    setBusy(true); setError(''); setReport(null); setPlaced(null)
     try {
-      const xml = await file.text()
+      let xml = await file.text()
+      const all = new Map(input.session.datasets.flatMap((d) => d.properties).map((p) => [p.id, p]))
+      if (picked.length) {
+        const pl = placeComps(xml, picked.map((id) => all.get(id)!).filter(Boolean), { mlsName: input.session.mls || 'MLS', effectiveDate: input.session.effectiveDate, state: 'TX' })
+        xml = pl.xml
+        setPlaced(pl)
+      }
       const rates: Record<string, number> = {}
       for (const k of keys) rates[k] = input.widgets[k].chosen as number
       const sub = input.session.subject
@@ -185,18 +202,42 @@ function TotalFill({ input, base }: { input: ReportInput; base: string }) {
       const out = fillTotalXml({ xml, rates, subject, comps, options: { roundTo, dropEmbeddedPdf: true, market } })
       setReport(out)
       download(`${file.name.replace(/\.xml$/i, '')}-adjusted.xml`, out.xml, 'application/xml')
-      void logEvent(input.session.id, 'export.documents', { documents: 'TOTAL report (XML)' })
+      void logEvent(input.session.id, 'export.documents', { documents: `TOTAL report (XML)${picked.length ? `, ${picked.length} comps placed` : ''}` })
     } catch (e) { setError(e instanceof Error ? e.message : 'The file could not be filled.') } finally { setBusy(false) }
   }
 
   return (
     <div className="mt-3 flex flex-col gap-3 rounded-md border border-border p-3 text-sm">
       <ol className="list-decimal pl-5 text-xs text-text-muted">
-        <li>In TOTAL, enter the subject and the comps, then save the report as XML (UAD).</li>
+        <li>In TOTAL, start the report (subject entered, and at least one comparable column in the grid), then save it as XML (UAD).</li>
         <li>Choose that file below. The adjusted copy downloads; your original is not touched.</li>
         <li>In TOTAL, use File &gt; Open UAD XML on the copy and review it.</li>
       </ol>
-      <p className="text-xs">{keys.length} finished feature{keys.length === 1 ? '' : 's'} will be written: {keys.map((k) => resolveFeature(k)!.label).join(', ') || 'none yet'}.</p>
+      <fieldset className="flex flex-col gap-2 rounded-md border border-border p-2">
+        <legend className="px-1 font-semibold">1. Sales to put in the grid as comps (optional, up to 12, in the order you click)</legend>
+        <div className="flex flex-wrap items-center gap-2">
+          <select className="rounded-md border border-border-input p-1" aria-label="Dataset" value={slot} onChange={(e) => setSlot(Number(e.target.value))}>
+            {input.session.datasets.filter((d) => d.properties.length).map((d) => <option key={d.slot} value={d.slot}>{d.name}</option>)}
+          </select>
+          <input className="rounded-md border border-border-input p-1" placeholder="Find by address or MLS number" aria-label="Find a sale" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <span className="text-xs text-text-muted">{picked.length} chosen</span>
+          {picked.length > 0 && <Button variant="link" onClick={() => setPicked([])}>Clear</Button>}
+        </div>
+        <ul className="max-h-48 overflow-auto text-xs">
+          {sales.slice(0, 200).map((p) => (
+            <li key={p.id}>
+              <label className="flex items-center gap-2 py-0.5">
+                <input type="checkbox" checked={picked.includes(p.id)} onChange={() => toggle(p.id)} />
+                <span className="w-6 text-right text-text-muted">{picked.includes(p.id) ? picked.indexOf(p.id) + 1 : ''}</span>
+                <span>{p.text?.address || <em>no address on file</em>}</span>
+                <span className="text-text-muted">MLS {p.id} · ${p.salePrice.toLocaleString('en-US')} · {p.saleDate} · {p.values.gla ?? '?'} sf</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {sales.length > 0 && sales.every((p) => !p.text?.address) && <p className="text-xs text-warning">These sales have no street addresses. Load the MLS file again (Datasets) so addresses are kept.</p>}
+      </fieldset>
+      <p className="text-xs">2. {keys.length} finished feature{keys.length === 1 ? '' : 's'} will be written: {keys.map((k) => resolveFeature(k)!.label).join(', ') || 'none yet'}.</p>
       <label className="flex items-center gap-2">Round each adjustment to the nearest
         <select className="rounded-md border border-border-input p-1" value={roundTo} onChange={(e) => setRoundTo(Number(e.target.value))}>
           {[1, 5, 10, 50, 100].map((v) => <option key={v} value={v}>${v}</option>)}
@@ -204,9 +245,16 @@ function TotalFill({ input, base }: { input: ReportInput; base: string }) {
       </label>
       <label className="flex items-center gap-2"><input type="checkbox" checked={withMarket} onChange={(e) => setWithMarket(e.target.checked)} /> Also fill the 1004MC figures and market wording (needs a market file)</label>
       <label className="flex flex-col gap-1">TOTAL report saved as XML
-        <input type="file" accept=".xml,text/xml,application/xml" disabled={busy || keys.length === 0} onChange={(e) => void onFile(e.target.files?.[0])} />
+        <input type="file" accept=".xml,text/xml,application/xml" disabled={busy || (keys.length === 0 && picked.length === 0)} onChange={(e) => void onFile(e.target.files?.[0])} />
       </label>
       {error && <p role="alert" className="text-danger">{error}</p>}
+      {placed && (
+        <div aria-live="polite" className="text-xs">
+          <p className="font-semibold">Comps placed</p>
+          <ul className="list-disc pl-5">{placed.placed.map((c) => <li key={c.seq}>Comp {c.seq}: {c.address || 'no address'} (MLS {c.id}){c.distance ? `, ${c.distance}` : ''}{c.created ? ', new column' : ', existing column updated'}</li>)}</ul>
+          {placed.warnings.length > 0 && <ul className="mt-1 list-disc pl-5 text-warning">{placed.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
+        </div>
+      )}
       {report && (
         <div aria-live="polite">
           <table className="w-full text-xs">
