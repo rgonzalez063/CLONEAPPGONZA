@@ -46,3 +46,9 @@ USING IT
 - Enter the subject (address, GLA, lot size, baths, garage). Optional: quality, condition and your cost per square foot for depreciated cost.
 - Each feature (GLA, lot size, baths...) shows every method's result; set the adjustment, mark it Done.
 - Export: summary, comments and the full workfile zip (with an activity log).
+
+SENDING SALES AND ADJUSTMENTS TO a la mode TOTAL
+- In TOTAL: enter the subject, add at least one comparable column to the sales grid, then save the report as XML (UAD).
+- In the app: open the session, choose Export, then "Fill a TOTAL report". Tick the sales to place as comps, pick your XML file, and a copy named "...-adjusted.xml" downloads. Your original file is not changed.
+- In TOTAL: File > Open UAD XML on the copy. Review it, especially quality, condition, view and the "other" feature lines, which the app cannot know.
+- Load your MLS file again in a session if its sales show "no address on file".
