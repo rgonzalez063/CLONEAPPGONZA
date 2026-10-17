@@ -269,7 +269,8 @@ describe.skipIf(!haveJ)('real John Rolfe Ln session (effective 2026-10-09)', () 
 })
 
 describe.skipIf(!fs.existsSync(path.resolve(__dirname, '../.sample/john/mc.csv')))('real 1004MC export (John Rolfe Ln, 68 listings of every status)', () => {
-  const r = importMarketCsv(fs.readFileSync(path.resolve(__dirname, '../.sample/john/mc.csv'), 'utf8'))
+  const mcFile = path.resolve(__dirname, '../.sample/john/mc.csv')
+  const r = fs.existsSync(mcFile) ? importMarketCsv(fs.readFileSync(mcFile, 'utf8')) : (null as unknown as ReturnType<typeof importMarketCsv>)
   it('reads every listing and every status', () => {
     expect(r.missing).toEqual([])
     expect(r.listings).toHaveLength(68)
@@ -286,7 +287,8 @@ describe.skipIf(!fs.existsSync(path.resolve(__dirname, '../.sample/john/mc.csv')
 
 
 describe.skipIf(!haveJ)('lot, interior and community groups on the John Rolfe Ln neighborhood export', () => {
-  const props = importCsv(fs.readFileSync(path.join(path.resolve(__dirname, '../.sample/john'), 'neigh.csv'), 'utf8'), '2026-10-09').properties
+  const neighFile = path.join(path.resolve(__dirname, '../.sample/john'), 'neigh.csv')
+  const props = fs.existsSync(neighFile) ? importCsv(fs.readFileSync(neighFile, 'utf8'), '2026-10-09').properties : []
   const count = (k: string) => props.filter((p) => p.values[k] === 1).length
   it('counts what the MLS text says', () => {
     expect(count('grp:lot:Cul-de-sac')).toBe(5)
