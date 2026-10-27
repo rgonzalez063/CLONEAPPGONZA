@@ -12,3 +12,11 @@ next-env.d.ts
 .env.local
 dist/
 .app-version
+
+# craft studio: installed apps and machine-specific MCP config (craft/install.sh recreates them)
+craft/apps/
+craft/bin/
+craft/.mcp.json
+craft/workspace/**
+!craft/workspace/*/
+!craft/workspace/*/.gitkeep

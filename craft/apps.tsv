@@ -1,0 +1,14 @@
+# app	mcp arguments ({WS} = the workspace folder)	replaces	what it does
+photocraft	mcp --automation-read-root {WS} --automation-write-root {WS}	Photoshop	Image editing: layers, masks, type, real PSD files
+lightcraft	mcp --compact	Lightroom	Photo library and raw development
+filmcraft	mcp	Premiere Pro	Video editing, color and sound
+effectcraft	mcp --automation-read-root {WS} --automation-write-root {WS}	After Effects	Motion graphics and visual effects
+vectorcraft	mcp --automation-read-root {WS} --automation-write-root {WS}	Illustrator	Vector illustration
+designcraft	mcp --automation-read-root {WS} --automation-write-root {WS}	InDesign	Page layout and publishing
+pdfcraft	mcp --compact --automation-read-root {WS} --automation-write-root {WS}	Acrobat	Reading, editing, organizing and protecting PDFs
+figcraft	mcp --automation-read-root {WS} --automation-write-root {WS}	XD / Figma	Interface design and prototyping
+soundcraft	mcp --automation-read-root {WS} --automation-write-root {WS}	Audition	Audio recording and editing
+wordcraft	mcp --automation-read-root {WS} --automation-write-root {WS}	Word	Word processing and documents
+deckcraft	mcp --automation-read-root {WS} --automation-write-root {WS}	PowerPoint	Presentations and slide decks
+gridcraft	mcp	Excel	Spreadsheets and data
+cadcraft	mcp	AutoCAD	Computer-aided design and drafting
