@@ -69,7 +69,7 @@ describe.skipIf(!existsSync(real))('real TOTAL file', () => {
 
 import { gridAmounts } from './totalXml'
 describe.skipIf(!existsSync('.sample/john/levant.xml') || !existsSync('.sample/john/total.xml'))("TOTAL's own totals in two real reports", () => {
-  for (const file of ['.sample/john/levant.xml', '.sample/john/total.xml']) {
+  for (const file of ['.sample/john/levant.xml', '.sample/john/total.xml', ...(existsSync('.sample/john/sailfish.xml') ? ['.sample/john/sailfish.xml'] : [])]) {
     it(`gridAmounts reproduces net, gross and percentages in ${file}`, () => {
       const xml = readFileSync(file, 'utf8')
       const blocks = (xml.match(/<COMPARABLE_SALE\b[\s\S]*?<\/COMPARABLE_SALE>/g) ?? []).filter((b) => /SalePriceTotalAdjustmentAmount="/.test(b))

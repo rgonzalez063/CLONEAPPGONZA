@@ -143,3 +143,4 @@ Your ValuLab file is a larger single-page version of the same tool. I read it as
 ## TOTAL fill: second real report (2003 Levant Ln, form 2055, 8 comps)
 - **Found:** the 2055 grid repeats the design amount in two rows (DesignAppeal and DesignStyle). TOTAL counts it once in its totals; the fill counted both. Fixed: one of the two is used.
 - **Checked:** the totals rule (net, adjusted price, gross % and net %) now reproduces TOTAL's own figures for every comp in both real reports (John Rolfe 1004: 4 comps; Levant 2055: 8 comps). Placing 9 sales into the 8-comp file updates 8 columns and adds a ninth.
+- **Third report (3915 Sailfish Ln, form 1004, 8 comps):** the totals rule also matches TOTAL's saved figures for all 8 comps. The source line without a space ("HARMLS#64297767") is matched correctly.
