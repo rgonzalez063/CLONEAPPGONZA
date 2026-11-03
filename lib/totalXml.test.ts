@@ -66,3 +66,26 @@ describe.skipIf(!existsSync(real))('real TOTAL file', () => {
     expect(r.xml).toMatch(/_Type="GrossLivingArea" _Description="1701" _Amount="-5100"/)
   })
 })
+
+import { gridAmounts } from './totalXml'
+describe.skipIf(!existsSync('.sample/john/levant.xml') || !existsSync('.sample/john/total.xml'))("TOTAL's own totals in two real reports", () => {
+  for (const file of ['.sample/john/levant.xml', '.sample/john/total.xml']) {
+    it(`gridAmounts reproduces net, gross and percentages in ${file}`, () => {
+      const xml = readFileSync(file, 'utf8')
+      const blocks = (xml.match(/<COMPARABLE_SALE\b[\s\S]*?<\/COMPARABLE_SALE>/g) ?? []).filter((b) => /SalePriceTotalAdjustmentAmount="/.test(b))
+      expect(blocks.length).toBeGreaterThanOrEqual(4)
+      for (const b of blocks) {
+        const open = /^<COMPARABLE_SALE[^>]*>/.exec(b)![0]
+        const at = (a: string) => Number(new RegExp(`${a}="([^"]*)"`).exec(open)![1])
+        const a = gridAmounts(b)
+        const net = a.reduce((x, y) => x + y, 0)
+        const gross = a.reduce((x, y) => x + Math.abs(y), 0)
+        const price = at('PropertySalesAmount')
+        expect(net).toBe(at('SalePriceTotalAdjustmentAmount'))
+        expect(price + net).toBe(at('AdjustedSalesPriceAmount'))
+        expect(Number(((gross / price) * 100).toFixed(1))).toBe(at('SalesPriceTotalAdjustmentGrossPercent'))
+        expect(Number(((Math.abs(net) / price) * 100).toFixed(1))).toBe(at('SalePriceTotalAdjustmentNetPercent'))
+      }
+    })
+  }
+})

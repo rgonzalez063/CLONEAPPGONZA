@@ -70,6 +70,23 @@ function compFromXml(block: string): Record<string, number | null> {
   return { gla: toNum(desc('GrossLivingArea')), lot_size: toNum(/[\d,.]+/.exec(desc('SiteArea'))?.[0] ?? null), age: toNum(desc('Age')), garage: car ? Number(car[1]) : null }
 }
 
+/**
+ * Every dollar in a comparable's grid, each counted once. Some forms (the 2055) repeat the design amount in two rows
+ * (DesignAppeal and DesignStyle); TOTAL counts it once in its totals, so only one of the two is used.
+ */
+export function gridAmounts(block: string): number[] {
+  const amounts: number[] = []
+  const rows = block.match(/<SALE_PRICE_ADJUSTMENT\b[^>]*\/>/g) ?? []
+  const hasAppeal = rows.some((t) => getAttr(t, '_Type') === 'DesignAppeal')
+  for (const t of rows) {
+    if (hasAppeal && getAttr(t, '_Type') === 'DesignStyle') continue
+    const n = toNum(getAttr(t, '_Amount'))
+    if (n !== null) amounts.push(n)
+  }
+  for (const t of block.match(/<OTHER_FEATURE_ADJUSTMENT\b[^>]*\/>/g) ?? []) { const n = toNum(getAttr(t, 'PropertyFeatureAdjustmentAmount')); if (n !== null) amounts.push(n) }
+  return amounts
+}
+
 // ------------------------------------------------------------------ the fill
 export function fillTotalXml(input: FillInput): FillReport {
   const { options } = input
@@ -142,9 +159,7 @@ export function fillTotalXml(input: FillInput): FillReport {
 
     // totals: every dollar in the grid, the room lines counted once
     const price = toNum(getAttr(open, 'PropertySalesAmount'))
-    const amounts: number[] = []
-    for (const t of out.match(/<SALE_PRICE_ADJUSTMENT\b[^>]*\/>/g) ?? []) { const n = toNum(getAttr(t, '_Amount')); if (n !== null) amounts.push(n) }
-    for (const t of out.match(/<OTHER_FEATURE_ADJUSTMENT\b[^>]*\/>/g) ?? []) { const n = toNum(getAttr(t, 'PropertyFeatureAdjustmentAmount')); if (n !== null) amounts.push(n) }
+    const amounts = gridAmounts(out)
     if (price && report.changes.length) {
       const net = amounts.reduce((a, b) => a + b, 0)
       const gross = amounts.reduce((a, b) => a + Math.abs(b), 0)

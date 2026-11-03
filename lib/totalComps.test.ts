@@ -81,3 +81,15 @@ describe.skipIf(!existsSync(real))('real TOTAL file', () => {
     expect(r.xml).toContain('HARMLS #6;DOM 5')
   })
 })
+
+describe.skipIf(!existsSync('.sample/john/levant.xml'))('real 2055 report with 8 comps', () => {
+  it('updates existing columns, adds a ninth and keeps the form intact', () => {
+    const src = readFileSync('.sample/john/levant.xml', 'utf8')
+    const r = placeComps(src, Array.from({ length: 9 }, (_, i) => sale(String(1000 + i))), opt)
+    expect(r.placed.filter((p) => p.created)).toHaveLength(1)
+    expect((r.xml.match(/<COMPARABLE_SALE /g) ?? []).length).toBe(10)
+    expect(r.xml).toContain('HARMLS #1008;DOM 5')
+    expect(r.xml).toContain('PropertyStreetAddress2="Katy, TX 77449"'.replace('Katy', 'Katy'))
+    expect(r.xml.length).toBeGreaterThan(src.length * 0.99)
+  })
+})

@@ -139,3 +139,7 @@ Your ValuLab file is a larger single-page version of the same tool. I read it as
 - **Export > a la mode TOTAL:** choose up to 12 sales; they become comparable columns 1..N of the TOTAL XML (existing columns are updated, extra ones are copied from comparable 1). Written in UAD wording: address and distance/direction from the subject, price and price per sqft, source "HARMLS #id;DOM n", sale/contract dates (s07/26;c06/26), financing and concessions, sale type (arm's length / REO / short sale), GLA, site area, age, bedrooms/baths, car storage. Old dollar amounts and totals in those columns are cleared, then the adjustment fill runs in the same step.
 - **Not known to the app (copied from comp 1, to review in TOTAL):** quality, condition, design, view, location, heating/cooling, amenities, "other" feature lines.
 - **Checked:** unit tests (fixture and the John Rolfe report); not opened in TOTAL itself.
+
+## TOTAL fill: second real report (2003 Levant Ln, form 2055, 8 comps)
+- **Found:** the 2055 grid repeats the design amount in two rows (DesignAppeal and DesignStyle). TOTAL counts it once in its totals; the fill counted both. Fixed: one of the two is used.
+- **Checked:** the totals rule (net, adjusted price, gross % and net %) now reproduces TOTAL's own figures for every comp in both real reports (John Rolfe 1004: 4 comps; Levant 2055: 8 comps). Placing 9 sales into the 8-comp file updates 8 columns and adds a ninth.
