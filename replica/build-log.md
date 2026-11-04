@@ -144,3 +144,6 @@ Your ValuLab file is a larger single-page version of the same tool. I read it as
 - **Found:** the 2055 grid repeats the design amount in two rows (DesignAppeal and DesignStyle). TOTAL counts it once in its totals; the fill counted both. Fixed: one of the two is used.
 - **Checked:** the totals rule (net, adjusted price, gross % and net %) now reproduces TOTAL's own figures for every comp in both real reports (John Rolfe 1004: 4 comps; Levant 2055: 8 comps). Placing 9 sales into the 8-comp file updates 8 columns and adds a ninth.
 - **Third report (3915 Sailfish Ln, form 1004, 8 comps):** the totals rule also matches TOTAL's saved figures for all 8 comps. The source line without a space ("HARMLS#64297767") is matched correctly.
+
+## TOTAL fill screen: "it didn't do anything" (7305 Yoe St, 1 comp)
+- The code was fine on that file (writes the adjustment, recomputes the totals). The screen was at fault: the file box was greyed out unless a feature was Done or a sale was ticked, choosing the same file twice did nothing, and an empty result gave no message. Now the box is always enabled, resets after each use, says plainly when there is nothing to write (and why), shows "Downloaded ... N adjustments written", and the TOTAL panel starts open.

@@ -122,7 +122,7 @@ export function ExportModal({ input, transactional, onClose }: { input: ReportIn
     } catch (e) { setError(e instanceof Error ? e.message : 'The workfile could not be built.') } finally { setBusy(false) }
   }
 
-  const [totalOpen, setTotalOpen] = useState(false)
+  const [totalOpen, setTotalOpen] = useState(true)
   const box = (k: Choice, label: string) => (
     <label className="flex items-center gap-2"><input type="checkbox" checked={sel[k]} onChange={(e) => setSel({ ...sel, [k]: e.target.checked })} /> {label}</label>
   )
@@ -164,6 +164,7 @@ function TotalFill({ input, base }: { input: ReportInput; base: string }) {
   const [error, setError] = useState('')
   const [report, setReport] = useState<FillReport | null>(null)
   const [placed, setPlaced] = useState<PlaceReport | null>(null)
+  const [done, setDone] = useState('')
   const [picked, setPicked] = useState<string[]>([])
   const [slot, setSlot] = useState(input.session.datasets.find((d) => d.properties.length)?.slot ?? 1)
   const [filter, setFilter] = useState('')
@@ -177,7 +178,11 @@ function TotalFill({ input, base }: { input: ReportInput; base: string }) {
 
   async function onFile(file: File | undefined) {
     if (!file) return
-    setBusy(true); setError(''); setReport(null); setPlaced(null)
+    setBusy(true); setError(''); setReport(null); setPlaced(null); setDone('')
+    if (keys.length === 0 && picked.length === 0) {
+      setError('Nothing to write yet. Do one or both of these first: (1) tick the sales you want as comps in step 1, (2) mark at least one feature Done with an adjustment chosen on the results page. Then choose the file again.')
+      setBusy(false); return
+    }
     try {
       let xml = await file.text()
       const all = new Map(input.session.datasets.flatMap((d) => d.properties).map((p) => [p.id, p]))
@@ -201,7 +206,14 @@ function TotalFill({ input, base }: { input: ReportInput; base: string }) {
       }
       const out = fillTotalXml({ xml, rates, subject, comps, options: { roundTo, dropEmbeddedPdf: true, market } })
       setReport(out)
-      download(`${file.name.replace(/\.xml$/i, '')}-adjusted.xml`, out.xml, 'application/xml')
+      const written = out.comps.reduce((n, c) => n + c.changes.length, 0)
+      if (written === 0 && !picked.length && !out.marketUpdated) {
+        setError('The file was read but no adjustment could be written, so nothing was downloaded. The notes below say why (usually the comps in the file are not among this session\'s sales, or the features have no value for the subject).')
+        return
+      }
+      const outName = `${file.name.replace(/\.xml$/i, '')}-adjusted.xml`
+      download(outName, out.xml, 'application/xml')
+      setDone(`Downloaded ${outName}: ${written} adjustment${written === 1 ? '' : 's'} written across ${out.comps.filter((c) => c.changes.length).length} comp${out.comps.length === 1 ? '' : 's'}${picked.length ? `, ${picked.length} sale${picked.length === 1 ? '' : 's'} placed as comps` : ''}. Open it in TOTAL with File > Open UAD XML.`)
       void logEvent(input.session.id, 'export.documents', { documents: `TOTAL report (XML)${picked.length ? `, ${picked.length} comps placed` : ''}` })
     } catch (e) { setError(e instanceof Error ? e.message : 'The file could not be filled.') } finally { setBusy(false) }
   }
@@ -245,8 +257,10 @@ function TotalFill({ input, base }: { input: ReportInput; base: string }) {
       </label>
       <label className="flex items-center gap-2"><input type="checkbox" checked={withMarket} onChange={(e) => setWithMarket(e.target.checked)} /> Also fill the 1004MC figures and market wording (needs a market file)</label>
       <label className="flex flex-col gap-1">TOTAL report saved as XML
-        <input type="file" accept=".xml,text/xml,application/xml" disabled={busy || (keys.length === 0 && picked.length === 0)} onChange={(e) => void onFile(e.target.files?.[0])} />
+        <input type="file" accept=".xml,text/xml,application/xml" disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; void onFile(f) }} />
       </label>
+      {busy && <p role="status" className="text-xs">Working on the file…</p>}
+      {done && <p role="status" className="rounded-md border border-success p-2 text-success">{done}</p>}
       {error && <p role="alert" className="text-danger">{error}</p>}
       {placed && (
         <div aria-live="polite" className="text-xs">
