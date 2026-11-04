@@ -276,11 +276,11 @@ describe.skipIf(!fs.existsSync(path.resolve(__dirname, '../.sample/john/mc.csv')
     expect(r.listings).toHaveLength(68)
     expect(new Set(r.listings.map((l) => l.status))).toEqual(new Set(['Sold', 'Active', 'Terminated', 'Expired', 'Withdrawn', 'Pending', 'Option Pending']))
   })
-  it('gives the 1004MC counts: 22 closed sales in 12 months, split 10 / 8 / 4, with 13 / 10 / 3 active listings at the period ends', () => {
+  it('gives the 1004MC counts: 22 closed sales in 12 months, split 10 / 8 / 4, with 13 / 10 / 6 active listings at the period ends (under contract still counts; the TOTAL report shows 13 / 13 / 6)', () => {
     const mc = mc1004(r.listings, '2026-10-09')
     expect(mc.map((c) => c.sales)).toEqual([10, 8, 4])
-    expect(mc.map((c) => c.actives)).toEqual([13, 10, 3])
-    expect(mc[2].monthsSupply).toBeCloseTo(2.25, 6)
+    expect(mc.map((c) => c.actives)).toEqual([13, 10, 6])
+    expect(mc[2].monthsSupply).toBeCloseTo(4.5, 6) // TOTAL: 4.5
   })
   it('flags the one REO closed sale', () => { expect(reoStats(r.listings, '2026-10-09').reo).toBe(1) })
 })

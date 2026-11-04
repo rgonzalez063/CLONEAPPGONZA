@@ -160,6 +160,7 @@ export function ExportModal({ input, transactional, onClose }: { input: ReportIn
 function TotalFill({ input, base }: { input: ReportInput; base: string }) {
   const [roundTo, setRoundTo] = useState(50)
   const [withMarket, setWithMarket] = useState(true)
+  const [setTrends, setSetTrends] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [report, setReport] = useState<FillReport | null>(null)
@@ -179,8 +180,8 @@ function TotalFill({ input, base }: { input: ReportInput; base: string }) {
   async function onFile(file: File | undefined) {
     if (!file) return
     setBusy(true); setError(''); setReport(null); setPlaced(null); setDone('')
-    if (keys.length === 0 && picked.length === 0) {
-      setError('Nothing to write yet. Do one or both of these first: (1) tick the sales you want as comps in step 1, (2) mark at least one feature Done with an adjustment chosen on the results page. Then choose the file again.')
+    if (keys.length === 0 && picked.length === 0 && !withMarket) {
+      setError('Nothing to write yet. Do at least one of these first: (1) tick the sales you want as comps in step 1, (2) mark a feature Done with an adjustment chosen on the results page, (3) tick the 1004MC box. Then choose the file again.')
       setBusy(false); return
     }
     try {
@@ -204,7 +205,7 @@ function TotalFill({ input, base }: { input: ReportInput; base: string }) {
         const f = files.find((x) => x.slot === 1)
         if (f?.listings.length) market = { listings: f.listings, effective: input.session.effectiveDate, source: String(f.notes.source || input.session.mls || 'The MLS'), notes: f.notes }
       }
-      const out = fillTotalXml({ xml, rates, subject, comps, options: { roundTo, dropEmbeddedPdf: true, market } })
+      const out = fillTotalXml({ xml, rates, subject, comps, options: { roundTo, dropEmbeddedPdf: true, setTrends, market } })
       setReport(out)
       const written = out.comps.reduce((n, c) => n + c.changes.length, 0)
       if (written === 0 && !picked.length && !out.marketUpdated) {
@@ -255,8 +256,9 @@ function TotalFill({ input, base }: { input: ReportInput; base: string }) {
           {[1, 5, 10, 50, 100].map((v) => <option key={v} value={v}>${v}</option>)}
         </select>
       </label>
-      <label className="flex items-center gap-2"><input type="checkbox" checked={withMarket} onChange={(e) => setWithMarket(e.target.checked)} /> Also fill the 1004MC figures and market wording (needs a market file)</label>
-      <label className="flex flex-col gap-1">TOTAL report saved as XML
+      <label className="flex items-center gap-2"><input type="checkbox" checked={withMarket} onChange={(e) => setWithMarket(e.target.checked)} /> 3. Send the 1004MC (figures and wording from your market file). If the report has no 1004MC form, one is added.</label>
+      {withMarket && <label className="ml-6 flex items-center gap-2 text-xs"><input type="checkbox" checked={setTrends} onChange={(e) => setSetTrends(e.target.checked)} /> Also set the Increasing / Stable / Declining boxes from the numbers (a new 1004MC form always gets them; an existing one keeps yours otherwise)</label>}
+      <label className="flex flex-col gap-1">4. Choose the TOTAL report saved as XML
         <input type="file" accept=".xml,text/xml,application/xml" disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; void onFile(f) }} />
       </label>
       {busy && <p role="status" className="text-xs">Working on the file…</p>}

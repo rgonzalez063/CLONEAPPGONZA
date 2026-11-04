@@ -8,6 +8,7 @@ import { resolveFeature } from './features'
 export interface FillOptions {
   roundTo: number // adjustments are rounded to this many dollars (1 = none)
   dropEmbeddedPdf: boolean // the PDF stored inside the file shows the old numbers
+  setTrends?: boolean // also set the Increasing/Stable/Declining boxes of an existing 1004MC from the numbers (a new one always gets them)
   market: null | { listings: Listing[]; effective: string; source: string; notes: Record<string, string | boolean | null> }
 }
 export interface FillInput {
@@ -85,6 +86,63 @@ export function gridAmounts(block: string): number[] {
   }
   for (const t of block.match(/<OTHER_FEATURE_ADJUSTMENT\b[^>]*\/>/g) ?? []) { const n = toNum(getAttr(t, 'PropertyFeatureAdjustmentAmount')); if (n !== null) amounts.push(n) }
   return amounts
+}
+
+// ------------------------------------------------------------------ the 1004MC form
+type Trend = 'Increasing' | 'Stable' | 'Declining'
+type McCols = ReturnType<typeof mc1004>
+/** The trend of each 1004MC line from the oldest period to the current one: more than 5% (1 point for the ratio) either way is a trend. */
+export function marketTrends(cols: McCols): Record<string, Trend | undefined> {
+  const pct = (get: (c: McCols[number]) => number | null): Trend | undefined => {
+    const a = get(cols[0]); const b = get(cols[2])
+    if (a === null || b === null) return undefined
+    if (a === 0) return b > 0 ? 'Increasing' : 'Stable'
+    const ch = (b - a) / Math.abs(a)
+    return ch > 0.05 ? 'Increasing' : ch < -0.05 ? 'Declining' : 'Stable'
+  }
+  const pts = (get: (c: McCols[number]) => number | null): Trend | undefined => {
+    const a = get(cols[0]); const b = get(cols[2])
+    return a === null || b === null ? undefined : b - a >= 1 ? 'Increasing' : b - a <= -1 ? 'Declining' : 'Stable'
+  }
+  return {
+    TotalSales: pct((c) => c.sales), AbsorptionRate: pct((c) => c.absorption), TotalListings: pct((c) => c.actives), Supply: pct((c) => c.monthsSupply),
+    MedianSalesPrice: pct((c) => c.medSalePrice), MedianSalesDOM: pct((c) => c.medDom), MedianListPrice: pct((c) => c.medListPrice),
+    MedianSalesToListRatio: pts((c) => c.medSaleToList),
+  }
+}
+
+const RANGES = ['Prior7To12Months', 'Prior4To6Months', 'Last3Months']
+interface NewMarket { concessions: string; reo: string; comment: string; assist: boolean; foreclosure: boolean; source: string; effective: string }
+/** A complete 1004MC form, laid out the way TOTAL writes it. SEQ is replaced by the form's place in the list. */
+function newMarketForm(cols: McCols, trends: Record<string, Trend | undefined>, o: NewMarket): string {
+  const usd = (v: number | null) => (v === null ? '' : `$${Math.round(v).toLocaleString('en-US')}`)
+  const num = (v: number | null, d = 0) => (v === null ? '' : v.toFixed(d))
+  const lines: string[] = []
+  const line = (type: string, valueAttr: string, get: (c: McCols[number]) => string) => {
+    RANGES.forEach((r, i) => lines.push(`<MARKET_INVENTORY _Type="${type}" _MonthRangeType="${r}" ${valueAttr}="${esc(get(cols[i]))}" />`))
+    if (trends[type]) lines.push(`<MARKET_INVENTORY _Type="${type}" _TrendType="${trends[type]}" />`)
+  }
+  line('TotalSales', '_Count', (c) => String(c.sales))
+  line('AbsorptionRate', '_Rate', (c) => num(c.absorption, 2))
+  line('TotalListings', '_Count', (c) => String(c.actives))
+  line('Supply', '_Count', (c) => num(c.monthsSupply, 1))
+  line('MedianSalesPrice', '_Amount', (c) => usd(c.medSalePrice))
+  line('MedianSalesDOM', '_Count', (c) => num(c.medDom))
+  line('MedianListPrice', '_Amount', (c) => usd(c.medListPrice))
+  line('MedianSalesToListRatio', '_Rate', (c) => (c.medSaleToList === null ? '' : `${Math.round(c.medSaleToList)}%`))
+  const eff = /^(\d{4})-(\d{2})-(\d{2})$/.exec(o.effective)
+  const shown = eff ? `${eff[2]}/${eff[3]}/${eff[1]}` : o.effective
+  const subj = ['TotalSales', 'AbsorptionRate', 'TotalListings', 'Supply'].flatMap((t) => RANGES.map((r) => `<MARKET_INVENTORY _Type="${t}" _MonthRangeType="${r}" ${t === 'AbsorptionRate' ? '_Rate' : '_Count'}="" />`))
+  return [
+    '<FORM AppraisalReportContentSequenceIdentifier="SEQ" AppraisalReportContentType="Addendum" AppraisalReportContentName="Market Conditions Addendum to the Appraisal Report" AppraisalReportContentIdentifier="1004MC" AppraisalReportContentIsPrimaryFormIndicator="N">',
+    `  <MARKET MarketTrendsAdverseFinancingIndicator="${o.assist ? 'Y' : 'N'}" MarketTrendsAdverseFinancingTrendType="Stable" SalesConcessionDescription="${esc(o.concessions)}" MarketTrendsForeclosureActivityIndicator="${o.foreclosure ? 'Y' : 'N'}" NeighborhoodMarketabilityFactorsDescription="${esc(o.reo)}" DataSourceDescription="${esc(`Information reported in the ${o.source} system (using an effective date of ${shown}) was utilized to arrive at the results noted on this addendum.`)}" MarketTrendsReconciliationComment="${esc(o.comment)}">`,
+    ...lines.map((l) => `    ${l}`),
+    '    <SUBJECT_PROJECT ProjectName="" NeighborhoodMarketabilityFactorsDescription="" MarketTrendsReconciliationComment="">',
+    ...subj.map((l) => `      ${l}`),
+    '    </SUBJECT_PROJECT>',
+    '  </MARKET>',
+    '</FORM>',
+  ].join('\n    ')
 }
 
 // ------------------------------------------------------------------ the fill
@@ -183,16 +241,37 @@ export function fillTotalXml(input: FillInput): FillReport {
   function applyMarket(m: NonNullable<FillOptions['market']>): boolean {
     const cols = mc1004(m.listings, m.effective)
     if (!cols.length) return false
+    const conc = concessionStats(m.listings, m.effective)
+    const reo = reoStats(m.listings, m.effective)
+    const trend = trendSummary(m.listings, m.effective)
+    const assist = typeof m.notes.assist === 'boolean' ? m.notes.assist : suggestAssistancePrevalent(conc)
+    const comment = [trend ? marketNarrative(trend) : '', String(m.notes.extra ?? '')].filter(Boolean).join(' ')
+    const trends = marketTrends(cols)
+
+    if (!/<MARKET\b/.test(xml)) {
+      // the report has no 1004MC form yet: add one right after the main form
+      const first = /<FORM\b[^>]*\/>/.exec(xml)
+      if (!first) { warnings.push('The file has no form list, so the 1004MC could not be added.'); return false }
+      const block = newMarketForm(cols, trends, { concessions: concessionNarrative(conc, m.source), reo: reoNarrative(reo, m.source), comment, assist, foreclosure: reo.reo > 0, source: m.source, effective: m.effective })
+      const seqs = [...xml.matchAll(/AppraisalReportContentSequenceIdentifier="(\d+)"/g)].map((x) => Number(x[1]))
+      const at = first.index! + first[0].length
+      xml = `${xml.slice(0, at)}\n    ${block.replace('SEQ', String(Math.max(0, ...seqs) + 1))}${xml.slice(at)}`
+      warnings.push('The file had no 1004MC form, so one was added with your figures and wording. The trend boxes (Increasing, Stable, Declining) were set from the numbers; check them against your judgment in TOTAL.')
+      return true
+    }
+
     const col = (range: string) => cols[range === 'Prior7To12Months' ? 0 : range === 'Prior4To6Months' ? 1 : 2]
     const usd = (v: number | null) => (v === null ? '' : `$${Math.round(v).toLocaleString('en-US')}`)
     const num = (v: number | null, d = 0) => (v === null ? '' : v.toFixed(d))
     let touched = false
-    xml = xml.replace(/<MARKET_INVENTORY\b[^>]*_MonthRangeType="[^"]+"[^>]*\/>/g, (tag, offset: number) => {
+    xml = xml.replace(/<MARKET_INVENTORY\b[^>]*\/>/g, (tag, offset: number) => {
       // the (empty) project block inside <SUBJECT_PROJECT> belongs to condominiums; leave it alone
       const before = xml.lastIndexOf('<SUBJECT_PROJECT', offset)
       if (before !== -1 && xml.indexOf('</SUBJECT_PROJECT>', before) > offset) return tag
       const type = getAttr(tag, '_Type')
-      const c = col(getAttr(tag, '_MonthRangeType') ?? '')
+      const range = getAttr(tag, '_MonthRangeType')
+      if (!range) { const t = trends[type ?? '']; return options.setTrends && t ? setAttr(tag, '_TrendType', t) : tag }
+      const c = col(range)
       const set = (attr: string, v: string) => { touched = true; return setAttr(tag, attr, v) }
       switch (type) {
         case 'TotalSales': return set('_Count', String(c.sales))
@@ -206,17 +285,13 @@ export function fillTotalXml(input: FillInput): FillReport {
         default: return tag
       }
     })
-    const conc = concessionStats(m.listings, m.effective)
-    const reo = reoStats(m.listings, m.effective)
-    const trend = trendSummary(m.listings, m.effective)
-    const assist = typeof m.notes.assist === 'boolean' ? m.notes.assist : suggestAssistancePrevalent(conc)
     xml = xml.replace(/<MARKET\b[^>]*>/, (tag) => {
       let t = setAttr(tag, 'SalesConcessionDescription', concessionNarrative(conc, m.source))
       t = setAttr(t, 'NeighborhoodMarketabilityFactorsDescription', reoNarrative(reo, m.source))
-      t = setAttr(t, 'MarketTrendsReconciliationComment', [trend ? marketNarrative(trend) : '', String(m.notes.extra ?? '')].filter(Boolean).join(' '))
+      t = setAttr(t, 'MarketTrendsReconciliationComment', comment)
       return setAttr(t, 'MarketTrendsAdverseFinancingIndicator', assist ? 'Y' : 'N')
     })
-    warnings.push('The 1004MC figures were replaced. The trend boxes (Increasing, Stable, Declining) were left as you set them in TOTAL; check that they still agree with the new numbers.')
+    warnings.push(options.setTrends ? 'The 1004MC figures were replaced and the trend boxes were set from the numbers; check them against your judgment.' : 'The 1004MC figures were replaced. The trend boxes (Increasing, Stable, Declining) were left as you set them in TOTAL; check that they still agree with the new numbers.')
     return touched
   }
 

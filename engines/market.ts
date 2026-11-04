@@ -53,12 +53,16 @@ export function bucketOf(l: Listing): Bucket {
 export const isREO = (l: Listing) => /\bREO\b|real\s+estate\s+owned|bank[\s-]?owned|foreclos/i.test(l.special)
 export const isShortSale = (l: Listing) => /short\s*sale/i.test(l.special)
 
-/** Was the listing on the market, not yet under contract, closed or ended, on a given day? */
+/**
+ * Was the listing on the market on a given day: listed, and not yet closed, withdrawn, expired or terminated?
+ * A listing under contract still counts until it closes (this reproduces the active-listing counts and median list prices
+ * in a real TOTAL 1004MC for two of its three periods; the contract date was ending the listing before).
+ */
 export function activeAt(l: Listing, day: string): boolean {
   const start = t(l.listDate)
   const at = t(day)!
   if (start === null || start > at) return false
-  const ends = [l.closeDate, l.offMarketDate, l.withdrawnDate, l.expirationDate, l.terminationDate, l.contractDate]
+  const ends = [l.closeDate, l.offMarketDate, l.withdrawnDate, l.expirationDate, l.terminationDate]
     .map(t).filter((x): x is number => x !== null && x >= start)
   if (ends.some((x) => x <= at)) return false
   return !(ends.length === 0 && /sold|closed/i.test(l.status)) // a sold row with no dates at all is not an open listing

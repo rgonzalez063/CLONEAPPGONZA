@@ -147,3 +147,8 @@ Your ValuLab file is a larger single-page version of the same tool. I read it as
 
 ## TOTAL fill screen: "it didn't do anything" (7305 Yoe St, 1 comp)
 - The code was fine on that file (writes the adjustment, recomputes the totals). The screen was at fault: the file box was greyed out unless a feature was Done or a sale was ticked, choosing the same file twice did nothing, and an empty result gave no message. Now the box is always enabled, resets after each use, says plainly when there is nothing to write (and why), shows "Downloaded ... N adjustments written", and the TOTAL panel starts open.
+
+## 1004MC into TOTAL, including when the report has no 1004MC form
+- **New:** if the TOTAL XML has no 1004MC form (the 7305 Yoe St file has only the URAR), one is added after the main form with the figures, concession/REO/market wording and, by default, the trend boxes. If the form exists it is filled in place and the trend boxes are kept unless "set the trend boxes" is ticked. The 1004MC can be sent without picking sales or adjustments.
+- **Checked against TOTAL's own 1004MC (John Rolfe Ln):** 24 of 27 figure lines identical.
+- **Changed rule:** a listing under contract now counts as active until it closes or ends (it used to stop counting at its contract date). That reproduces TOTAL's active listings, months of supply and median list price for the current 3 months and the prior 7-12 months. The prior 4-6 months column in TOTAL's report (13 listings, 4.9 months, $250,000) cannot be reproduced by any single date; it may have been edited by hand or come from another source.

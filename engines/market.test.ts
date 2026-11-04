@@ -19,11 +19,12 @@ describe('dates and periods', () => {
 })
 
 describe('what counts as active', () => {
-  it('is on the market from the list date until it goes under contract, closes or ends', () => {
+  it('is on the market from the list date until it closes or ends (under contract still counts)', () => {
     const l = L({ status: 'Sold', listDate: '2026-05-01', contractDate: '2026-06-01', closeDate: '2026-07-01' })
     expect(activeAt(l, '2026-04-30')).toBe(false)
     expect(activeAt(l, '2026-05-15')).toBe(true)
-    expect(activeAt(l, '2026-06-01')).toBe(false)
+    expect(activeAt(l, '2026-06-01')).toBe(true) // under contract, not yet closed
+    expect(activeAt(l, '2026-07-01')).toBe(false)
     expect(activeAt(L({ status: 'Active', listDate: '2026-09-01', closeDate: null, contractDate: null, soldPrice: null }), E)).toBe(true)
     expect(activeAt(L({ status: 'Expired', listDate: '2026-01-01', closeDate: null, contractDate: null, expirationDate: '2026-03-01', soldPrice: null }), '2026-04-01')).toBe(false)
   })
